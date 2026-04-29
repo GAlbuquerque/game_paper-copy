@@ -249,7 +249,7 @@ class EconomicGameApp:
         for idx in range(total_turns):
             self._apply_bootstrap_overrides_before_turn(idx, total_turns)
             self.economy.adjust_interest_rate_with_taylor()
-            result = self.economy.simulate_quarter(ignore_difficulty=True)
+            result = self.economy.simulate_quarter()
             result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
             if result.get("event") and self.economy.current_quarter > offset:
                 self.news_text.insert(
