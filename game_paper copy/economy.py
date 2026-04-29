@@ -156,11 +156,10 @@ class Economy:
 
         self.reputation = float(min(1.0, max(0.0, self.reputation + delta)))
 
-    def simulate_quarter(self, ignore_difficulty=False):
-        self._ignore_difficulty = bool(ignore_difficulty)
+    def simulate_quarter(self):
         shocks = generate_shocks(
             self.correlation_matrix,
-            self.std_devs * (1.0 if self._ignore_difficulty else self.shock_sd_scale),
+            self.std_devs * self.shock_sd_scale,
         )
         history = self._build_history_snapshot()
         event_description, event_name, names = self._select_and_queue_event(history)
@@ -278,7 +277,7 @@ class Economy:
         )
 
     def _compute_unemployment(self, new_natural_unemployment, rate_effect, shocks):
-        if self.simplified_dynamics and not getattr(self, "_ignore_difficulty", False):
+        if self.simplified_dynamics:
             prev_real = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
             rate_effect = max(min((prev_real - self.indicators.real_rate_eq) * 0.25, 2.5), -1.0)
         bounded_level = min(
@@ -299,7 +298,7 @@ class Economy:
         sens = max(self.indicators.inflation_rate / 4, 0.5)
         adaptive_beta = min(max(0.0, 1.0 - 0.2 * reputation), 1)
         inflation_persistence = self.beta1["inflation"]
-        if self.simplified_dynamics and not getattr(self, "_ignore_difficulty", False):
+        if self.simplified_dynamics:
             inflation_persistence = 0.35
             gap_effect *= 0.4
         adaptive_term = (
@@ -400,7 +399,7 @@ class Economy:
         )
 
     def check_events(self, history):
-        if self.event_cooldown_quarters > 0 and not getattr(self, "_ignore_difficulty", False):
+        if self.event_cooldown_quarters > 0:
             if (self.current_quarter - self.last_event_quarter) < self.event_cooldown_quarters:
                 return None
         fired = []
