@@ -23,30 +23,10 @@ offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {
     "Random": None,
-    "Stable Economy": {
-        "inflation_rate": (1.8, 2.5),
-        "unemployment_rate": (4.0, 6.0),
-        "natural_unemployment_rate": (4.0, 5.5),
-        "real_rate_eq": (0.5, 1.5),
-    },
-    "Stagflation": {
-        "inflation_rate": (5.0, 9.0),
-        "unemployment_rate": (8.0, 12.0),
-        "natural_unemployment_rate": (5.5, 7.0),
-        "real_rate_eq": (1.0, 2.5),
-    },
-    "Hyperinflation": {
-        "inflation_rate": (25.0, 80.0),
-        "unemployment_rate": (7.0, 14.0),
-        "natural_unemployment_rate": (5.0, 8.0),
-        "real_rate_eq": (2.0, 5.0),
-    },
-    "Depression": {
-        "inflation_rate": (-3.0, 1.0),
-        "unemployment_rate": (12.0, 25.0),
-        "natural_unemployment_rate": (6.0, 10.0),
-        "real_rate_eq": (-1.0, 0.5),
-    },
+    "Stable Economy": None,
+    "Stagflation": None,
+    "Hyperinflation": None,
+    "Depression": None,
 }
 
 
@@ -232,6 +212,8 @@ class EconomicGameApp:
         self.plot_graphs()
 
     def _reset_economy_for_bootstrap(self):
+        if not hasattr(self, "scenario_name"):
+            self.scenario_name = "Random"
         self.economy = Economy(
             difficulty=self.difficulty,
             scenario=self._sample_scenario(self.scenario_name),
@@ -243,28 +225,52 @@ class EconomicGameApp:
 
     def _autorun_initial_history(self):
         total_turns = 40 + offset
+        self._set_bootstrap_difficulty_overrides()
         self._apply_bootstrap_persona()
-        for idx in range(total_turns):
-            self._apply_bootstrap_overrides_before_turn(idx, total_turns)
-            self.economy.adjust_interest_rate_with_taylor()
-            result = self.economy.simulate_quarter(ignore_difficulty=True)
-            result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
-            if result.get("event") and self.economy.current_quarter > offset:
-                self.news_text.insert(
-                    tk.END,
-                    f"Quarter {max(1, self.economy.current_quarter - offset)}: "
-                    f"{result['event_name']}\n",
-                )
-                self.rate_entry.delete(0, tk.END)
+        try:
+            for idx in range(total_turns):
+                self._apply_bootstrap_overrides_before_turn(idx, total_turns)
+                self.economy.adjust_interest_rate_with_taylor()
+                result = self.economy.simulate_quarter()
+                result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
+                if result.get("event") and self.economy.current_quarter > offset:
+                    self.news_text.insert(
+                        tk.END,
+                        f"Quarter {max(1, self.economy.current_quarter - offset)}: "
+                        f"{result['event_name']}\n",
+                    )
+                    self.rate_entry.delete(0, tk.END)
+        finally:
+            self._restore_bootstrap_difficulty_overrides()
+
+    def _set_bootstrap_difficulty_overrides(self):
+        self._bootstrap_difficulty_backup = (
+            self.economy.event_cooldown_quarters,
+            self.economy.shock_sd_scale,
+            self.economy.simplified_dynamics,
+        )
+        self.economy.event_cooldown_quarters = 0
+        self.economy.shock_sd_scale = 1.0
+        self.economy.simplified_dynamics = False
+
+    def _restore_bootstrap_difficulty_overrides(self):
+        if not hasattr(self, "_bootstrap_difficulty_backup"):
+            return
+        (
+            self.economy.event_cooldown_quarters,
+            self.economy.shock_sd_scale,
+            self.economy.simplified_dynamics,
+        ) = self._bootstrap_difficulty_backup
 
     def _apply_bootstrap_persona(self):
-        if self.scenario_name == "Stable Economy":
+        scenario_name = getattr(self, "scenario_name", "Random")
+        if scenario_name == "Stable Economy":
             self.economy.cb_persona = "good"
-        elif self.scenario_name == "Stagflation":
+        elif scenario_name == "Stagflation":
             self.economy.cb_persona = "dove"
-        elif self.scenario_name == "Hyperinflation":
+        elif scenario_name == "Hyperinflation":
             self.economy.cb_persona = "careless"
-        elif self.scenario_name == "Depression":
+        elif scenario_name == "Depression":
             self.economy.cb_persona = "hawk"
 
     def _apply_bootstrap_overrides_before_turn(self, idx, total_turns):
@@ -272,11 +278,15 @@ class EconomicGameApp:
             self.economy.last_event_quarter = self.economy.current_quarter
 
         if self.scenario_name == "Hyperinflation":
+            if getattr(self, "_hyperinflation_prob_boosted", False):
+                return
             for event in self.economy.events:
                 if event.name == "Spending Wave":
                     for term in event.prob_terms:
                         if term.label == "a_base":
-                            term.fn = lambda h: 0.015
+                            original_fn = term.fn
+                            term.fn = lambda h, _f=original_fn: min(1.0, 3 * float(_f(h)))
+                            self._hyperinflation_prob_boosted = True
 
     def _apply_bootstrap_overrides_after_turn(self, idx, total_turns, result):
         two_before_player = (total_turns - 2)
@@ -284,7 +294,7 @@ class EconomicGameApp:
             if self.scenario_name == "Depression":
                 self._force_event_by_name("Major Financial Crisis")
             if self.scenario_name == "Stagflation":
-                self._force_first_negative_real_rate_event()
+                self._force_stagflation_supply_shock()
 
         if self.scenario_name == "Hyperinflation" and idx == total_turns - 1:
             if not self._has_past_event("Spending Wave"):
@@ -294,11 +304,15 @@ class EconomicGameApp:
     def _has_past_event(self, event_name):
         return any(event_name in quarter_events for quarter_events in self.economy.past_events)
 
-    def _force_first_negative_real_rate_event(self):
-        for event in self.economy.events:
-            sched = event.effects_schedule.get("real_rate_eq", [])
-            if any(value < 0 for value in sched):
-                self._force_event_by_name(event.name)
+    def _force_stagflation_supply_shock(self):
+        candidate_events = [
+            "Global Supply Shock",
+            "Pandemic Outbreak",
+            "Natural Disaster",
+        ]
+        for event_name in candidate_events:
+            if any(event.name == event_name for event in self.economy.events):
+                self._force_event_by_name(event_name)
                 return
 
     def _force_event_by_name(self, event_name):
@@ -321,14 +335,7 @@ class EconomicGameApp:
         self.rate_entry.insert(0, f"{self.economy.interest_rate:.2f}")
 
     def _sample_scenario(self, scenario_name):
-        import numpy as np
-        spec = SCENARIOS.get(scenario_name)
-        if not spec:
-            return None
-        scenario = {}
-        for key, (low, high) in spec.items():
-            scenario[key] = float(np.random.uniform(low, high))
-        return scenario
+        return SCENARIOS.get(scenario_name)
 
     def configure_styles(self):
         self.style.configure("Main.TFrame", background=self.bg_color)
