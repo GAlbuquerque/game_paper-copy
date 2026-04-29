@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict
+from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -21,12 +22,33 @@ class Economy:
     REAL_RATE_HISTORY_LENGTH = 10
     GAP_WEIGHTS = [3, 4, 5, 5, 10, 4, 3, 2, 1, 1, 0]
 
-    def __init__(self, initial_state=None):
+    def __init__(self, initial_state=None, difficulty="central_banker", scenario=None):
+        self.difficulty = difficulty
+        self.event_cooldown_quarters = self._difficulty_event_cooldown(difficulty)
+        self.shock_sd_scale = self._difficulty_shock_scale(difficulty)
+        self.simplified_dynamics = difficulty == "principles"
         self._initialize_runtime_state(initial_state)
+        if scenario is not None:
+            self.indicators = replace(self.indicators, **scenario)
         self._initialize_model_parameters()
         self._seed_real_rate_history()
         self.historical_gaps = [0] * 11
         self.historical_data = self._build_historical_frame()
+        self.last_event_quarter = -10_000
+
+    def _difficulty_event_cooldown(self, difficulty):
+        return {
+            "principles": 20,
+            "senior": 10,
+            "central_banker": 0,
+        }.get(difficulty, 0)
+
+    def _difficulty_shock_scale(self, difficulty):
+        return {
+            "principles": 0.0,
+            "senior": 0.5,
+            "central_banker": 1.0,
+        }.get(difficulty, 1.0)
 
     def _initialize_runtime_state(self, initial_state):
         self.effect_queue = self._new_effect_queue()
@@ -135,7 +157,10 @@ class Economy:
         self.reputation = float(min(1.0, max(0.0, self.reputation + delta)))
 
     def simulate_quarter(self):
-        shocks = generate_shocks(self.correlation_matrix, self.std_devs)
+        shocks = generate_shocks(
+            self.correlation_matrix,
+            self.std_devs * self.shock_sd_scale,
+        )
         history = self._build_history_snapshot()
         event_description, event_name, names = self._select_and_queue_event(history)
         self._record_past_events(names)
@@ -250,6 +275,9 @@ class Economy:
         )
 
     def _compute_unemployment(self, new_natural_unemployment, rate_effect, shocks):
+        if self.simplified_dynamics:
+            prev_real = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
+            rate_effect = max(min((prev_real - self.indicators.real_rate_eq) * 0.25, 2.5), -1.0)
         bounded_level = min(
             max(self.indicators.unemployment_rate + rate_effect + shocks[1], 1),
             100,
@@ -267,12 +295,17 @@ class Economy:
         anchor = 2.0
         sens = max(self.indicators.inflation_rate / 4, 0.5)
         adaptive_beta = min(max(0.0, 1.0 - 0.2 * reputation), 1)
+        inflation_persistence = self.beta1["inflation"]
+        if self.simplified_dynamics:
+            inflation_persistence = 0.35
+            gap_effect *= 0.4
         adaptive_term = (
             adaptive_beta
-            * self.beta1["inflation"]
+            * inflation_persistence
             * self.indicators.inflation_rate
         )
         drift = (1 - adaptive_beta) * anchor
+
         new_inflation = (
             adaptive_term
             + drift
@@ -364,6 +397,9 @@ class Economy:
         )
 
     def check_events(self, history):
+        if self.event_cooldown_quarters > 0:
+            if (self.current_quarter - self.last_event_quarter) < self.event_cooldown_quarters:
+                return None
         fired = []
         for event in self.events:
             get_probability = getattr(event, "get_probability", None)
@@ -377,7 +413,9 @@ class Economy:
 
         if not fired:
             return None
-        return np.random.choice(fired)
+        chosen = np.random.choice(fired)
+        self.last_event_quarter = self.current_quarter
+        return chosen
 
     def enqueue_event(self, event):
         for indicator, sequence in event.effects_schedule.items():

@@ -21,12 +21,41 @@ from economy import Economy
 
 offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
+SCENARIOS = {
+    "Random": None,
+    "Stable Economy": {
+        "inflation_rate": (1.8, 2.5),
+        "unemployment_rate": (4.0, 6.0),
+        "natural_unemployment_rate": (4.0, 5.5),
+        "real_rate_eq": (0.5, 1.5),
+    },
+    "Stagflation": {
+        "inflation_rate": (5.0, 9.0),
+        "unemployment_rate": (8.0, 12.0),
+        "natural_unemployment_rate": (5.5, 7.0),
+        "real_rate_eq": (1.0, 2.5),
+    },
+    "Hyperinflation": {
+        "inflation_rate": (25.0, 80.0),
+        "unemployment_rate": (7.0, 14.0),
+        "natural_unemployment_rate": (5.0, 8.0),
+        "real_rate_eq": (2.0, 5.0),
+    },
+    "Depression": {
+        "inflation_rate": (-3.0, 1.0),
+        "unemployment_rate": (12.0, 25.0),
+        "natural_unemployment_rate": (6.0, 10.0),
+        "real_rate_eq": (-1.0, 0.5),
+    },
+}
 
 
 class EconomicGameApp:
-    def __init__(self, root):
+    def __init__(self, root, difficulty="central_banker", scenario_name="Random"):
         self.root = root
         self.root.title(APP_TITLE)
+        self.difficulty = difficulty
+        self.scenario_name = scenario_name
 
         self.style = ttk.Style()
         self.style.theme_use("default")
@@ -53,7 +82,10 @@ class EconomicGameApp:
         self.term_line_color = "black"
 
     def _initialize_game_state(self):
-        self.economy = Economy()
+        self.economy = Economy(
+            difficulty=self.difficulty,
+            scenario=self._sample_scenario(self.scenario_name),
+        )
         # Likely intent issue preserved for equivalence:
         # bootstrap_initial_history() replaces self.economy, but these baselines are
         # not refreshed there or in new_game(). End-of-term text therefore compares
@@ -200,7 +232,10 @@ class EconomicGameApp:
         self.plot_graphs()
 
     def _reset_economy_for_bootstrap(self):
-        self.economy = Economy()
+        self.economy = Economy(
+            difficulty=self.difficulty,
+            scenario=self._sample_scenario(self.scenario_name),
+        )
         self.end_game_window = None
         self.current_term_start = 41 + offset
         self.news_text.delete("1.0", tk.END)
@@ -221,6 +256,16 @@ class EconomicGameApp:
     def _sync_rate_entry_to_current_rate(self):
         self.rate_entry.delete(0, tk.END)
         self.rate_entry.insert(0, f"{self.economy.interest_rate:.2f}")
+
+    def _sample_scenario(self, scenario_name):
+        import numpy as np
+        spec = SCENARIOS.get(scenario_name)
+        if not spec:
+            return None
+        scenario = {}
+        for key, (low, high) in spec.items():
+            scenario[key] = float(np.random.uniform(low, high))
+        return scenario
 
     def configure_styles(self):
         self.style.configure("Main.TFrame", background=self.bg_color)
@@ -655,8 +700,91 @@ def main():
     except Exception:
         pass
 
-    EconomicGameApp(root)
+    GameLauncher(root)
     root.mainloop()
+
+
+class GameLauncher:
+    def __init__(self, root):
+        self.root = root
+        self.frame = ttk.Frame(root, padding=16)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+        self.difficulty = tk.StringVar(value="central_banker")
+        self.scenario = tk.StringVar(value="Random")
+        self.mandate = tk.StringVar(value="Inflation Target (future)")
+        self._build()
+
+    def _build(self):
+        ttk.Label(self.frame, text=APP_TITLE, font=("Helvetica", 24)).pack(pady=6)
+        ttk.Button(self.frame, text="Load Game (coming soon)", command=self._load_stub).pack(fill=tk.X, pady=4)
+        ttk.Label(self.frame, text="Create New Game").pack(anchor="w", pady=(12, 2))
+        diff_frame = ttk.Frame(self.frame)
+        diff_frame.pack(fill=tk.X)
+        options = [
+            ("Principles (easy)", "principles"),
+            ("Senior (medium)", "senior"),
+            ("Central Banker", "central_banker"),
+        ]
+        for label, value in options:
+            ttk.Radiobutton(diff_frame, text=label, variable=self.difficulty, value=value).pack(anchor="w")
+        ttk.Button(diff_frame, text="Custom (disabled for now)", state=tk.DISABLED).pack(anchor="w", pady=2)
+
+        ttk.Label(self.frame, text="Scenario").pack(anchor="w", pady=(10, 2))
+        scn = ttk.Frame(self.frame)
+        scn.pack(fill=tk.X)
+        for name in SCENARIOS.keys():
+            ttk.Radiobutton(scn, text=name, variable=self.scenario, value=name).pack(anchor="w")
+
+        ttk.Label(self.frame, text="Central Bank Mandate (future)").pack(anchor="w", pady=(10, 2))
+        mandate_box = ttk.Combobox(
+            self.frame,
+            textvariable=self.mandate,
+            state="readonly",
+            values=["Inflation Target (future)", "Dual Mandate (future)", "Other (future)"],
+        )
+        mandate_box.pack(fill=tk.X)
+        mandate_box.current(0)
+        ttk.Button(self.frame, text="Start New Game", command=self._start_game).pack(fill=tk.X, pady=(12, 4))
+        ttk.Button(self.frame, text="Run Batch Simulations", command=self._batch_test_dialog).pack(fill=tk.X, pady=4)
+
+    def _load_stub(self):
+        messagebox.showinfo("Load Game", "Load game will be added in a future update.")
+
+    def _start_game(self):
+        self.frame.destroy()
+        EconomicGameApp(self.root, difficulty=self.difficulty.get(), scenario_name=self.scenario.get())
+
+    def _batch_test_dialog(self):
+        top = tk.Toplevel(self.root)
+        top.title("Batch Simulation Test")
+        ttk.Label(top, text="Number of simulations").pack(padx=10, pady=(10, 2))
+        entry = ttk.Entry(top)
+        entry.insert(0, "25")
+        entry.pack(padx=10, pady=4)
+        out = tk.Text(top, width=70, height=14)
+        out.pack(padx=10, pady=10)
+
+        def run():
+            import numpy as np
+            n = max(1, int(entry.get()))
+            finals = []
+            for _ in range(n):
+                econ = Economy(difficulty=self.difficulty.get(), scenario=None)
+                for __ in range(40):
+                    econ.adjust_interest_rate_with_taylor()
+                    econ.simulate_quarter()
+                finals.append((econ.indicators.inflation_rate, econ.indicators.unemployment_rate))
+            infl = np.array([x[0] for x in finals])
+            unemp = np.array([x[1] for x in finals])
+            out.delete("1.0", tk.END)
+            out.insert(tk.END, f"Difficulty: {self.difficulty.get()}\nRuns: {n}\n")
+            out.insert(tk.END, f"Inflation mean/median: {infl.mean():.2f} / {np.median(infl):.2f}\n")
+            out.insert(tk.END, f"Unemployment mean/median: {unemp.mean():.2f} / {np.median(unemp):.2f}\n")
+            out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
+            out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
+            out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
+
+        ttk.Button(top, text="Run", command=run).pack(pady=(0, 10))
 
 
 if __name__ == "__main__":
