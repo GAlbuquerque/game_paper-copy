@@ -242,9 +242,13 @@ class EconomicGameApp:
         self.economy.offset = offset
 
     def _autorun_initial_history(self):
-        for _ in range(40 + offset):
+        total_turns = 40 + offset
+        self._apply_bootstrap_persona()
+        for idx in range(total_turns):
+            self._apply_bootstrap_overrides_before_turn(idx, total_turns)
             self.economy.adjust_interest_rate_with_taylor()
-            result = self.economy.simulate_quarter()
+            result = self.economy.simulate_quarter(ignore_difficulty=True)
+            result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
             if result.get("event") and self.economy.current_quarter > offset:
                 self.news_text.insert(
                     tk.END,
@@ -252,6 +256,65 @@ class EconomicGameApp:
                     f"{result['event_name']}\n",
                 )
                 self.rate_entry.delete(0, tk.END)
+
+    def _apply_bootstrap_persona(self):
+        if self.scenario_name == "Stable Economy":
+            self.economy.cb_persona = "good"
+        elif self.scenario_name == "Stagflation":
+            self.economy.cb_persona = "dove"
+        elif self.scenario_name == "Hyperinflation":
+            self.economy.cb_persona = "careless"
+        elif self.scenario_name == "Depression":
+            self.economy.cb_persona = "hawk"
+
+    def _apply_bootstrap_overrides_before_turn(self, idx, total_turns):
+        if self.scenario_name == "Stable Economy" and idx >= total_turns - 10:
+            self.economy.last_event_quarter = self.economy.current_quarter
+
+        if self.scenario_name == "Hyperinflation":
+            for event in self.economy.events:
+                if event.name == "Spending Wave":
+                    for term in event.prob_terms:
+                        if term.label == "a_base":
+                            term.fn = lambda h: 0.015
+
+    def _apply_bootstrap_overrides_after_turn(self, idx, total_turns, result):
+        two_before_player = (total_turns - 2)
+        if idx == two_before_player:
+            if self.scenario_name == "Depression":
+                self._force_event_by_name("Major Financial Crisis")
+            if self.scenario_name == "Stagflation":
+                self._force_first_negative_real_rate_event()
+
+        if self.scenario_name == "Hyperinflation" and idx == total_turns - 1:
+            if not self._has_past_event("Spending Wave"):
+                self._force_event_by_name("Spending Wave")
+        return result
+
+    def _has_past_event(self, event_name):
+        return any(event_name in quarter_events for quarter_events in self.economy.past_events)
+
+    def _force_first_negative_real_rate_event(self):
+        for event in self.economy.events:
+            sched = event.effects_schedule.get("real_rate_eq", [])
+            if any(value < 0 for value in sched):
+                self._force_event_by_name(event.name)
+                return
+
+    def _force_event_by_name(self, event_name):
+        event = next((e for e in self.economy.events if e.name == event_name), None)
+        if event is None:
+            return
+        self.economy.enqueue_event(event)
+        self.economy.apply_event_effects(dict(self.economy.effect_queue[0]))
+        self.economy.effect_queue[0] = {}
+        self.economy.past_events.append([event.name])
+        self.economy.past_events = self.economy.past_events[-8:]
+        if self.economy.current_quarter > offset:
+            self.news_text.insert(
+                tk.END,
+                f"Quarter {max(1, self.economy.current_quarter - offset)}: {event.name}\n",
+            )
 
     def _sync_rate_entry_to_current_rate(self):
         self.rate_entry.delete(0, tk.END)

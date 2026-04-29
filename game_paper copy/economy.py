@@ -168,13 +168,15 @@ class Economy:
         rate_effect, gap_effect = self._run_core_model(shocks)
         self.current_quarter += 1
 
-        return {
+        result = {
             "event": event_description,
             "event_name": event_name,
             "rate_effect": rate_effect,
             "gap_effect": gap_effect,
             "shocks": shocks.tolist(),
         }
+        self._ignore_difficulty = False
+        return result
 
     def _build_history_snapshot(self):
         q_user = self.current_quarter - self.offset
