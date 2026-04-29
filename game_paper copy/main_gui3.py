@@ -227,40 +227,18 @@ class EconomicGameApp:
         total_turns = 40 + offset
         self._set_bootstrap_difficulty_overrides()
         self._apply_bootstrap_persona()
-        try:
-            for idx in range(total_turns):
-                self._apply_bootstrap_overrides_before_turn(idx, total_turns)
-                self.economy.adjust_interest_rate_with_taylor()
-                result = self.economy.simulate_quarter()
-                result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
-                if result.get("event") and self.economy.current_quarter > offset:
-                    self.news_text.insert(
-                        tk.END,
-                        f"Quarter {max(1, self.economy.current_quarter - offset)}: "
-                        f"{result['event_name']}\n",
-                    )
-                    self.rate_entry.delete(0, tk.END)
-        finally:
-            self._restore_bootstrap_difficulty_overrides()
-
-    def _set_bootstrap_difficulty_overrides(self):
-        self._bootstrap_difficulty_backup = (
-            self.economy.event_cooldown_quarters,
-            self.economy.shock_sd_scale,
-            self.economy.simplified_dynamics,
-        )
-        self.economy.event_cooldown_quarters = 0
-        self.economy.shock_sd_scale = 1.0
-        self.economy.simplified_dynamics = False
-
-    def _restore_bootstrap_difficulty_overrides(self):
-        if not hasattr(self, "_bootstrap_difficulty_backup"):
-            return
-        (
-            self.economy.event_cooldown_quarters,
-            self.economy.shock_sd_scale,
-            self.economy.simplified_dynamics,
-        ) = self._bootstrap_difficulty_backup
+        for idx in range(total_turns):
+            self._apply_bootstrap_overrides_before_turn(idx, total_turns)
+            self.economy.adjust_interest_rate_with_taylor()
+            result = self.economy.simulate_quarter()
+            result = self._apply_bootstrap_overrides_after_turn(idx, total_turns, result)
+            if result.get("event") and self.economy.current_quarter > offset:
+                self.news_text.insert(
+                    tk.END,
+                    f"Quarter {max(1, self.economy.current_quarter - offset)}: "
+                    f"{result['event_name']}\n",
+                )
+                self.rate_entry.delete(0, tk.END)
 
     def _apply_bootstrap_persona(self):
         scenario_name = getattr(self, "scenario_name", "Random")
