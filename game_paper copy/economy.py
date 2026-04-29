@@ -276,7 +276,8 @@ class Economy:
         new_inflation = (
             adaptive_term
             + drift
-            + (gap_effect + rate_effect_inflation + shocks[0]) * sens
+            + shocks[0] * sens
+            + gap_effect+ rate_effect_inflation
         )
 
         if new_inflation < 0 and self.indicators.inflation_rate > 10:
@@ -339,11 +340,15 @@ class Economy:
         )
 
         if weighted_gap >= 0:
-            return -0.1 * weighted_gap
+            gap_effect = -0.1 * weighted_gap
 
-        natural_rate = self.indicators.natural_unemployment_rate
-        unemployment_rate = self.indicators.unemployment_rate
-        return (0.2 * natural_rate / (unemployment_rate + 5) + 0.1) * (-weighted_gap)
+        else:
+            natural_rate = self.indicators.natural_unemployment_rate
+            unemployment_rate = self.indicators.unemployment_rate
+            inflation_rate = self.indicators.inflation_rate
+            gap_effect = min( (0.2 * natural_rate / (unemployment_rate + 1) + 0.1) * (-weighted_gap), 0.05*inflation_rate)
+        
+        return gap_effect
 
     def update_historical_data(self):
         new_data = pd.DataFrame(
