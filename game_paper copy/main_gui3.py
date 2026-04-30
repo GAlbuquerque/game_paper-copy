@@ -21,14 +21,13 @@ from economy import Economy
 
 offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
-SCENARIO_OPTIONS = [
-    "Random",
-    "Stable Economy",
-    "Stagflation",
-    "Hyperinflation",
-    "Depression",
-]
-SCENARIOS = {name: None for name in SCENARIO_OPTIONS}
+SCENARIOS = {
+    "Random": None,
+    "Stable Economy": None,
+    "Stagflation": None,
+    "Hyperinflation": None,
+    "Depression": None,
+}
 
 
 class EconomicGameApp:
@@ -780,7 +779,7 @@ class GameLauncher:
         self.frame = ttk.Frame(root, padding=16)
         self.frame.pack(fill=tk.BOTH, expand=True)
         self.difficulty = tk.StringVar(value="central_banker")
-        self.scenario = tk.StringVar(value="Random")
+        self.scenario = tk.StringVar(value="None")
         self.mandate = tk.StringVar(value="Inflation Target (future)")
         self._build()
 
