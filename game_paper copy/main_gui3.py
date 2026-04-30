@@ -80,6 +80,8 @@ class EconomicGameApp:
         self.term_length = 16
         self.current_event_name = None
         self.end_game_window = None
+        self.graph_window_mode = "full"
+        self.graph_split_mode = False
 
     def _build_layout(self):
         self._build_main_frame()
@@ -197,6 +199,22 @@ class EconomicGameApp:
         )
         self.next_button.grid(row=6, column=2, sticky=(tk.W, tk.E))
 
+        self.view_toggle_button = ttk.Button(
+            self.main_frame,
+            text="View: Full History",
+            command=self.toggle_graph_window_mode,
+            style="Main.TButton",
+        )
+        self.view_toggle_button.grid(row=7, column=0, sticky=(tk.W, tk.E), pady=(6, 0))
+
+        self.split_toggle_button = ttk.Button(
+            self.main_frame,
+            text="Graph: Combined",
+            command=self.toggle_graph_split_mode,
+            style="Main.TButton",
+        )
+        self.split_toggle_button.grid(row=7, column=1, sticky=(tk.W, tk.E), pady=(6, 0))
+
     def _bind_events(self):
         self.root.bind("<Return>", lambda event: self.next_turn())
 
@@ -222,6 +240,8 @@ class EconomicGameApp:
         )
         self._apply_scenario_initial_conditions()
         self.end_game_window = None
+        self.graph_window_mode = "full"
+        self.graph_split_mode = False
         self.current_term_start = 41 + offset
         self.news_text.delete("1.0", tk.END)
         self.economy.offset = offset
@@ -453,43 +473,64 @@ class EconomicGameApp:
         self.plot_graphs()
 
     def plot_graphs(self):
-        self.ax.clear()
-        self.ax.set_facecolor("white")
-
         histories = self._visible_histories()
-        self.ax.plot(histories["inflation"], label="Inflation Rate", color=self.inflation_color)
-        self.ax.plot(
-            histories["unemployment"],
-            label="Unemployment Rate",
-            color=self.unemployment_color,
-        )
-        self.ax.plot(
-            histories["interest_rate"],
-            label="Interest Rate",
-            linestyle="--",
-            color=self.interest_rate_color,
-        )
 
-        if self.current_term_start <= len(histories["inflation"]) + offset:
-            self.ax.axvline(x=40, color=self.term_line_color, linestyle="--")
+        if self.graph_split_mode:
+            self.fig.clf()
+            ax_top = self.fig.add_subplot(2, 1, 1)
+            ax_bottom = self.fig.add_subplot(2, 1, 2, sharex=ax_top)
 
-        self.ax.set_xlabel("Quarter")
-        self.ax.set_ylabel("Percentage")
-        self.ax.legend(fontsize=8)
-        self.ax.minorticks_on()
-        self.ax.grid(True, which="major", linewidth=0.8, alpha=0.4)
-        self.ax.grid(True, which="minor", linewidth=0.5, alpha=0.2)
+            ax_top.set_facecolor("white")
+            ax_top.plot(histories["inflation"], label="Inflation Rate", color=self.inflation_color)
+            ax_top.plot(histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
+            ax_top.set_ylabel("Percentage")
+            ax_top.legend(fontsize=8)
+            ax_top.grid(True, which="major", linewidth=0.8, alpha=0.4)
+
+            ax_bottom.set_facecolor("white")
+            ax_bottom.plot(histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
+            ax_bottom.plot(histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
+            ax_bottom.set_xlabel("Quarter")
+            ax_bottom.set_ylabel("Percentage")
+            ax_bottom.legend(fontsize=8)
+            ax_bottom.grid(True, which="major", linewidth=0.8, alpha=0.4)
+
+            self.ax = ax_top
+            self._draw_event_banner()
+        else:
+            self.fig.clf()
+            self.ax = self.fig.add_subplot(1, 1, 1)
+            self.ax.clear()
+            self.ax.set_facecolor("white")
+            self.ax.plot(histories["inflation"], label="Inflation Rate", color=self.inflation_color)
+            self.ax.plot(histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
+            self.ax.plot(histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
+            self.ax.set_xlabel("Quarter")
+            self.ax.set_ylabel("Percentage")
+            self.ax.legend(fontsize=8)
+            self.ax.minorticks_on()
+            self.ax.grid(True, which="major", linewidth=0.8, alpha=0.4)
+            self.ax.grid(True, which="minor", linewidth=0.5, alpha=0.2)
+            self._draw_event_banner()
+
         self.fig.tight_layout()
-        self._draw_event_banner()
         self.canvas.draw()
 
     def _visible_histories(self):
+        window = 20 if self.graph_window_mode == "recent" else None
+
+        def clip(series):
+            base = series[offset:]
+            if window is None:
+                return base
+            return base[-window:]
+
         return {
-            "inflation": self.economy.variables.get_history("inflation_rate")[offset:],
-            "unemployment": self.economy.variables.get_history("unemployment_rate")[offset:],
-            "interest_rate": self.economy.variables.get_history("interest_rate")[offset:],
-            "natural_unemployment": self.economy.variables.get_history("natural_unemployment_rate")[offset:],
-            "reputation": self.economy.variables.get_history("cb_reputation")[offset:],
+            "inflation": clip(self.economy.variables.get_history("inflation_rate")),
+            "unemployment": clip(self.economy.variables.get_history("unemployment_rate")),
+            "interest_rate": clip(self.economy.variables.get_history("interest_rate")),
+            "natural_unemployment": clip(self.economy.variables.get_history("natural_unemployment_rate")),
+            "reputation": clip(self.economy.variables.get_history("cb_reputation")),
         }
 
     def _draw_event_banner(self):
@@ -511,6 +552,20 @@ class EconomicGameApp:
                     boxstyle="round,pad=0.3",
                 ),
             )
+
+    def toggle_graph_window_mode(self):
+        self.graph_window_mode = "recent" if self.graph_window_mode == "full" else "full"
+        self.view_toggle_button.config(
+            text="View: Recent Turns" if self.graph_window_mode == "recent" else "View: Full History"
+        )
+        self.plot_graphs()
+
+    def toggle_graph_split_mode(self):
+        self.graph_split_mode = not self.graph_split_mode
+        self.split_toggle_button.config(
+            text="Graph: Split" if self.graph_split_mode else "Graph: Combined"
+        )
+        self.plot_graphs()
 
     def next_turn(self):
         try:
@@ -841,28 +896,38 @@ class GameLauncher:
         entry = ttk.Entry(top)
         entry.insert(0, "25")
         entry.pack(padx=10, pady=4)
+        ttk.Label(top, text="Turns per simulation").pack(padx=10, pady=(6, 2))
+        turns_entry = ttk.Entry(top)
+        turns_entry.insert(0, "40")
+        turns_entry.pack(padx=10, pady=4)
         out = tk.Text(top, width=70, height=14)
         out.pack(padx=10, pady=10)
 
         def run():
             import numpy as np
             n = max(1, int(entry.get()))
+            turns = max(1, int(turns_entry.get()))
             finals = []
+            errors = 0
             for _ in range(n):
-                econ = Economy(difficulty=self.difficulty.get(), scenario=None)
-                for __ in range(40):
-                    econ.adjust_interest_rate_with_taylor()
-                    econ.simulate_quarter()
-                finals.append((econ.indicators.inflation_rate, econ.indicators.unemployment_rate))
+                try:
+                    econ = Economy(difficulty=self.difficulty.get(), scenario=None)
+                    for __ in range(turns):
+                        econ.adjust_interest_rate_with_taylor()
+                        econ.simulate_quarter()
+                    finals.append((econ.indicators.inflation_rate, econ.indicators.unemployment_rate))
+                except Exception:
+                    errors += 1
             infl = np.array([x[0] for x in finals])
             unemp = np.array([x[1] for x in finals])
             out.delete("1.0", tk.END)
-            out.insert(tk.END, f"Difficulty: {self.difficulty.get()}\nRuns: {n}\n")
+            out.insert(tk.END, f"Difficulty: {self.difficulty.get()}\nRuns: {n}\nTurns: {turns}\n")
             out.insert(tk.END, f"Inflation mean/median: {infl.mean():.2f} / {np.median(infl):.2f}\n")
             out.insert(tk.END, f"Unemployment mean/median: {unemp.mean():.2f} / {np.median(unemp):.2f}\n")
             out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
             out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
             out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
+            out.insert(tk.END, f"Errors: {errors}\n")
 
         ttk.Button(top, text="Run", command=run).pack(pady=(0, 10))
 

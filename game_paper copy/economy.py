@@ -421,20 +421,8 @@ class Economy:
         unemployment = history.get("unemployment_rate", [0.0])[-1]
         natural_unemployment = history.get("natural_unemployment_rate", [0.0])[-1]
 
-        if self._recent_fiscal_event_count(within=4) == 0:
-            if inflation < 0 and unemployment > natural_unemployment:
-                target_name = (
-                    "Fiscal Deficit" if np.random.rand() < 0.5 else "Spending Wave"
-                )
-                for event in self.events:
-                    if event.name == target_name:
-                        self.last_event_quarter = self.current_quarter
-                        return event
-            if inflation > 10 and np.random.rand() < 0.5:
-                for event in self.events:
-                    if event.name == "Fiscal Surplus":
-                        self.last_event_quarter = self.current_quarter
-                        return event
+        # Cooperative fiscal policy events are intentionally disabled.
+        # This prevents them from triggering in any difficulty level and period.
 
         if self.event_cooldown_quarters > 0:
             if (self.current_quarter - self.last_event_quarter) < self.event_cooldown_quarters:
