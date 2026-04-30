@@ -23,7 +23,6 @@ offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {
     "Random": None,
-    "None": None,
     "Stable Economy": None,
     "Stagflation": None,
     "Hyperinflation": None,
