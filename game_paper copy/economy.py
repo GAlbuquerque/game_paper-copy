@@ -570,10 +570,10 @@ class Economy:
                 + 0.1 * (natural_unemployment - unemployment)
             )
         return (
-            -0.5
+            -5
             + inflation
             + 0.05 * (inflation - 6)
-            + 0.95 * (natural_unemployment - 2 - unemployment)
+            + 0.95 * (natural_unemployment - 3 - unemployment)
         )
 
     def get_state(self):
