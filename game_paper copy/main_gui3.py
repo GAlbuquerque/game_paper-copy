@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -132,7 +133,28 @@ class EconomicGameApp:
             style="Main.TLabelframe",
         )
         self.graph_frame.grid(row=4, column=0, columnspan=3, pady=5, sticky=(tk.W, tk.E))
+        self._build_graph_controls()
         self.create_graph_panel()
+
+    def _build_graph_controls(self):
+        controls = ttk.Frame(self.graph_frame, style="Main.TFrame")
+        controls.pack(fill=tk.X, padx=2, pady=(0, 6))
+
+        self.view_toggle_button = ttk.Button(
+            controls,
+            text="History: Full",
+            command=self.toggle_graph_window_mode,
+            style="Main.TButton",
+        )
+        self.view_toggle_button.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.split_toggle_button = ttk.Button(
+            controls,
+            text="Layout: Combined",
+            command=self.toggle_graph_split_mode,
+            style="Main.TButton",
+        )
+        self.split_toggle_button.pack(side=tk.LEFT)
 
     def _build_news_section(self):
         self.news_frame = ttk.LabelFrame(
@@ -162,6 +184,7 @@ class EconomicGameApp:
             bg=self.news_text.cget("background"),
             justify="left",
             wraplength=600,
+            height=3,
             anchor="w",
             padx=10,
             pady=5,
@@ -200,22 +223,6 @@ class EconomicGameApp:
             style="Main.TButton",
         )
         self.next_button.grid(row=6, column=2, sticky=(tk.W, tk.E))
-
-        self.view_toggle_button = ttk.Button(
-            self.main_frame,
-            text="View: Full History",
-            command=self.toggle_graph_window_mode,
-            style="Main.TButton",
-        )
-        self.view_toggle_button.grid(row=7, column=0, sticky=(tk.W, tk.E), pady=(6, 0))
-
-        self.split_toggle_button = ttk.Button(
-            self.main_frame,
-            text="Graph: Combined",
-            command=self.toggle_graph_split_mode,
-            style="Main.TButton",
-        )
-        self.split_toggle_button.grid(row=7, column=1, sticky=(tk.W, tk.E), pady=(6, 0))
 
     def _bind_events(self):
         self.root.bind("<Return>", lambda event: self.next_turn())
@@ -499,8 +506,11 @@ class EconomicGameApp:
                 ax_bottom.plot(x, histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
             ax_bottom.set_xlabel("Quarter")
             ax_bottom.set_ylabel("Percentage")
+            ax_bottom.set_ylim(bottom=0)
             ax_bottom.legend(fontsize=8)
             ax_bottom.grid(True, which="major", linewidth=0.8, alpha=0.4)
+            if self.graph_window_mode == "recent":
+                ax_bottom.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             self.ax = ax_top
             self._draw_event_banner()
@@ -520,6 +530,8 @@ class EconomicGameApp:
             self.ax.minorticks_on()
             self.ax.grid(True, which="major", linewidth=0.8, alpha=0.4)
             self.ax.grid(True, which="minor", linewidth=0.5, alpha=0.2)
+            if self.graph_window_mode == "recent":
+                self.ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             self._draw_event_banner()
 
         self.fig.tight_layout()
@@ -571,14 +583,14 @@ class EconomicGameApp:
     def toggle_graph_window_mode(self):
         self.graph_window_mode = "recent" if self.graph_window_mode == "full" else "full"
         self.view_toggle_button.config(
-            text="View: Recent Turns" if self.graph_window_mode == "recent" else "View: Full History"
+            text="History: Recent" if self.graph_window_mode == "recent" else "History: Full"
         )
         self.plot_graphs()
 
     def toggle_graph_split_mode(self):
         self.graph_split_mode = not self.graph_split_mode
         self.split_toggle_button.config(
-            text="Graph: Split" if self.graph_split_mode else "Graph: Combined"
+            text="Layout: Split" if self.graph_split_mode else "Layout: Combined"
         )
         self.plot_graphs()
 
@@ -636,12 +648,14 @@ class EconomicGameApp:
                 text=f"{result['event_name']}\n    • {result['event']}"
             )
             self.current_event_name = result["event_name"]
+            self.rate_entry.delete(0, tk.END)
             return
 
         self.latest_event_label.config(text="")
         self.current_event_name = None
 
     def check_end_of_game(self):
+        self.next_button.config(state=tk.DISABLED)
         final_inflation = self.economy.indicators.inflation_rate
         final_unemployment = self.economy.indicators.unemployment_rate
 
@@ -713,6 +727,9 @@ class EconomicGameApp:
 
         self.end_game_window = tk.Toplevel(self.root)
         self.end_game_window.title("End of Game")
+        self.end_game_window.transient(self.root)
+        self.end_game_window.grab_set()
+        self.end_game_window.protocol("WM_DELETE_WINDOW", lambda: None)
 
         end_game_frame = ttk.Frame(self.end_game_window, style="Main.TFrame", padding=10)
         end_game_frame.pack(fill=tk.BOTH, expand=True)
@@ -747,14 +764,17 @@ class EconomicGameApp:
         retire_button.pack(side=tk.RIGHT, padx=20)
 
     def on_continue(self, window):
+        window.grab_release()
         window.destroy()
         self.current_term_start = self.economy.current_quarter + 1
         self.next_button.config(state=tk.NORMAL)
 
     def on_retire(self, window):
+        window.grab_release()
         window.destroy()
         self.next_button.config(state=tk.DISABLED)
         self.rate_entry.config(state=tk.DISABLED)
+        self._compress_layout_for_post_retire()
 
         self.end_label = ttk.Label(
             self.main_frame,
@@ -764,19 +784,35 @@ class EconomicGameApp:
         )
         self.end_label.grid(row=7, column=0, columnspan=3, pady=15)
 
-        self.new_game_button = ttk.Button(
-            self.main_frame,
-            text="New Game",
+        self.post_retire_actions_frame = ttk.Frame(self.main_frame, style="Main.TFrame")
+        self.post_retire_actions_frame.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=4)
+        for column in range(3):
+            self.post_retire_actions_frame.grid_columnconfigure(column, weight=1)
+
+        self.play_again_button = ttk.Button(
+            self.post_retire_actions_frame,
+            text="Play Again (Same Settings)",
             command=self.new_game,
         )
-        self.new_game_button.grid(row=8, column=1, sticky=(tk.W, tk.E), padx=4)
+        self.play_again_button.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=2)
+
+        self.main_menu_button = ttk.Button(
+            self.post_retire_actions_frame,
+            text="Main Menu",
+            command=self.return_to_main_menu,
+        )
+        self.main_menu_button.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=2)
 
         self.save_graph_button = ttk.Button(
-            self.main_frame,
+            self.post_retire_actions_frame,
             text="Save Chart",
             command=self.save_chart,
         )
-        self.save_graph_button.grid(row=8, column=2, sticky=(tk.W, tk.E), padx=4)
+        self.save_graph_button.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=2)
+
+    def _compress_layout_for_post_retire(self):
+        self.news_text.configure(height=3)
+        self.latest_event_label.configure(font=("Helvetica", 13, "bold"), height=2, wraplength=560)
 
     def show_event_details(self, event):
         event_window = tk.Toplevel(self.root)
@@ -818,15 +854,28 @@ class EconomicGameApp:
     def new_game(self):
         self.next_button.config(state=tk.NORMAL)
         self.rate_entry.config(state=tk.NORMAL)
+        self._restore_layout_defaults()
         if hasattr(self, "end_label"):
             self.end_label.destroy()
-        if hasattr(self, "new_game_button"):
-            self.new_game_button.destroy()
+        if hasattr(self, "play_again_button"):
+            self.play_again_button.destroy()
+        if hasattr(self, "main_menu_button"):
+            self.main_menu_button.destroy()
         if hasattr(self, "save_graph_button"):
             self.save_graph_button.destroy()
+        if hasattr(self, "post_retire_actions_frame"):
+            self.post_retire_actions_frame.destroy()
 
         self.reset_graph_panel()
         self.bootstrap_initial_history()
+
+    def return_to_main_menu(self):
+        self.main_frame.destroy()
+        GameLauncher(self.root)
+
+    def _restore_layout_defaults(self):
+        self.news_text.configure(height=5)
+        self.latest_event_label.configure(font=("Helvetica", 16, "bold"), height=3, wraplength=600)
 
     def save_chart(self):
         charts_dir = Path.home() / "EconGame" / "charts"
