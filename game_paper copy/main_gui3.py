@@ -291,12 +291,13 @@ class EconomicGameApp:
         return any(event_name in quarter_events for quarter_events in self.economy.past_events)
 
     def _force_stagflation_supply_shock(self):
+        history = self.economy._build_history_snapshot()
         weighted_candidates = []
         for event_name in ["Global Supply Shock", "Pandemic Outbreak", "Natural Disaster"]:
             event = next((e for e in self.economy.events if e.name == event_name), None)
             if event is None:
                 continue
-            weight = max(0.0, float(event.base_prob))
+            weight = max(0.0, float(event.get_probability(history)))
             weighted_candidates.append((event.name, weight))
 
         if not weighted_candidates:
