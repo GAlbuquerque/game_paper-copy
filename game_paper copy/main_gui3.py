@@ -801,8 +801,13 @@ class GameLauncher:
         ttk.Label(self.frame, text="Scenario").pack(anchor="w", pady=(10, 2))
         scn = ttk.Frame(self.frame)
         scn.pack(fill=tk.X)
-        for name in SCENARIOS.keys():
-            ttk.Radiobutton(scn, text=name, variable=self.scenario, value=name).pack(anchor="w")
+        for scenario_name in SCENARIO_OPTIONS:
+            ttk.Radiobutton(
+                scn,
+                text=scenario_name,
+                variable=self.scenario,
+                value=scenario_name,
+            ).pack(anchor="w")
 
         ttk.Label(self.frame, text="Central Bank Mandate (future)").pack(anchor="w", pady=(10, 2))
         mandate_box = ttk.Combobox(
