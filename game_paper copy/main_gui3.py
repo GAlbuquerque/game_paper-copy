@@ -801,7 +801,7 @@ class EconomicGameApp:
             text="Save Chart",
             command=self.save_chart,
         )
-        self.save_graph_button.grid(row=8, column=2, sticky=(tk.W, tk.E), padx=4)
+        self.save_graph_button.grid(row=9, column=2, sticky=(tk.W, tk.E), padx=4, pady=(6, 0))
 
     def show_event_details(self, event):
         event_window = tk.Toplevel(self.root)
