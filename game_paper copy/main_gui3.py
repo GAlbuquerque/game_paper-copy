@@ -8,6 +8,7 @@ Created on Sun Feb 16 13:17:54 2025
 
 from datetime import datetime
 from pathlib import Path
+from collections import defaultdict
 import ctypes
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -321,7 +322,7 @@ class EconomicGameApp:
             return
         self.economy.enqueue_event(event)
         self.economy.apply_event_effects(dict(self.economy.effect_queue[0]))
-        self.economy.effect_queue[0] = {}
+        self.economy.effect_queue[0] = defaultdict(float)
         self.economy.past_events.append([event.name])
         self.economy.past_events = self.economy.past_events[-8:]
         if self.economy.current_quarter > offset:
