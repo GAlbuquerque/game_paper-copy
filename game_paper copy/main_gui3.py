@@ -23,6 +23,7 @@ offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {
     "Random": None,
+    "None": None,
     "Stable Economy": None,
     "Stagflation": None,
     "Hyperinflation": None,
@@ -225,7 +226,6 @@ class EconomicGameApp:
 
     def _autorun_initial_history(self):
         total_turns = 40 + offset
-        self._set_bootstrap_difficulty_overrides()
         self._apply_bootstrap_persona()
         for idx in range(total_turns):
             self._apply_bootstrap_overrides_before_turn(idx, total_turns)
@@ -283,15 +283,28 @@ class EconomicGameApp:
         return any(event_name in quarter_events for quarter_events in self.economy.past_events)
 
     def _force_stagflation_supply_shock(self):
-        candidate_events = [
-            "Global Supply Shock",
-            "Pandemic Outbreak",
-            "Natural Disaster",
-        ]
-        for event_name in candidate_events:
-            if any(event.name == event_name for event in self.economy.events):
-                self._force_event_by_name(event_name)
-                return
+        weighted_candidates = []
+        for event_name in ["Global Supply Shock", "Pandemic Outbreak", "Natural Disaster"]:
+            event = next((e for e in self.economy.events if e.name == event_name), None)
+            if event is None:
+                continue
+            weight = max(0.0, float(event.base_prob))
+            weighted_candidates.append((event.name, weight))
+
+        if not weighted_candidates:
+            return
+
+        total_weight = sum(weight for _, weight in weighted_candidates)
+        if total_weight <= 0:
+            selected_name = weighted_candidates[0][0]
+        else:
+            import random
+
+            names = [name for name, _ in weighted_candidates]
+            weights = [weight for _, weight in weighted_candidates]
+            selected_name = random.choices(names, weights=weights, k=1)[0]
+
+        self._force_event_by_name(selected_name)
 
     def _force_event_by_name(self, event_name):
         event = next((e for e in self.economy.events if e.name == event_name), None)
@@ -758,7 +771,7 @@ class GameLauncher:
         self.frame = ttk.Frame(root, padding=16)
         self.frame.pack(fill=tk.BOTH, expand=True)
         self.difficulty = tk.StringVar(value="central_banker")
-        self.scenario = tk.StringVar(value="Random")
+        self.scenario = tk.StringVar(value="None")
         self.mandate = tk.StringVar(value="Inflation Target (future)")
         self._build()
 
