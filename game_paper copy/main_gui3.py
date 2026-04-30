@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -499,8 +500,11 @@ class EconomicGameApp:
                 ax_bottom.plot(x, histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
             ax_bottom.set_xlabel("Quarter")
             ax_bottom.set_ylabel("Percentage")
+            ax_bottom.set_ylim(bottom=0)
             ax_bottom.legend(fontsize=8)
             ax_bottom.grid(True, which="major", linewidth=0.8, alpha=0.4)
+            if self.graph_window_mode == "recent":
+                ax_bottom.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             self.ax = ax_top
             self._draw_event_banner()
@@ -520,6 +524,8 @@ class EconomicGameApp:
             self.ax.minorticks_on()
             self.ax.grid(True, which="major", linewidth=0.8, alpha=0.4)
             self.ax.grid(True, which="minor", linewidth=0.5, alpha=0.2)
+            if self.graph_window_mode == "recent":
+                self.ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             self._draw_event_banner()
 
         self.fig.tight_layout()
