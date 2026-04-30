@@ -21,13 +21,14 @@ from economy import Economy
 
 offset = 10  # hidden turns
 APP_TITLE = "Policy Interest Rate Simulator"
-SCENARIOS = {
-    "Random": None,
-    "Stable Economy": None,
-    "Stagflation": None,
-    "Hyperinflation": None,
-    "Depression": None,
-}
+SCENARIO_OPTIONS = [
+    "Random",
+    "Stable Economy",
+    "Stagflation",
+    "Hyperinflation",
+    "Depression",
+]
+SCENARIOS = {name: None for name in SCENARIO_OPTIONS}
 
 
 class EconomicGameApp:
@@ -63,7 +64,7 @@ class EconomicGameApp:
 
     def _initialize_game_state(self):
         self.economy = Economy(
-            difficulty=self.difficulty,
+            difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
         # Likely intent issue preserved for equivalence:
@@ -207,6 +208,7 @@ class EconomicGameApp:
     def bootstrap_initial_history(self):
         self._reset_economy_for_bootstrap()
         self._autorun_initial_history()
+        self._activate_player_difficulty()
         self._sync_rate_entry_to_current_rate()
         self.update_ui()
         self.plot_graphs()
@@ -215,7 +217,7 @@ class EconomicGameApp:
         if not hasattr(self, "scenario_name"):
             self.scenario_name = "Random"
         self.economy = Economy(
-            difficulty=self.difficulty,
+            difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
         self.end_game_window = None
@@ -223,9 +225,16 @@ class EconomicGameApp:
         self.news_text.delete("1.0", tk.END)
         self.economy.offset = offset
 
+
+    def _activate_player_difficulty(self):
+        difficulty = self.difficulty
+        self.economy.difficulty = difficulty
+        self.economy.event_cooldown_quarters = self.economy._difficulty_event_cooldown(difficulty)
+        self.economy.shock_sd_scale = self.economy._difficulty_shock_scale(difficulty)
+        self.economy.simplified_dynamics = difficulty == "principles"
+
     def _autorun_initial_history(self):
         total_turns = 40 + offset
-        self._set_bootstrap_difficulty_overrides()
         self._apply_bootstrap_persona()
         for idx in range(total_turns):
             self._apply_bootstrap_overrides_before_turn(idx, total_turns)
@@ -283,15 +292,28 @@ class EconomicGameApp:
         return any(event_name in quarter_events for quarter_events in self.economy.past_events)
 
     def _force_stagflation_supply_shock(self):
-        candidate_events = [
-            "Global Supply Shock",
-            "Pandemic Outbreak",
-            "Natural Disaster",
-        ]
-        for event_name in candidate_events:
-            if any(event.name == event_name for event in self.economy.events):
-                self._force_event_by_name(event_name)
-                return
+        weighted_candidates = []
+        for event_name in ["Global Supply Shock", "Pandemic Outbreak", "Natural Disaster"]:
+            event = next((e for e in self.economy.events if e.name == event_name), None)
+            if event is None:
+                continue
+            weight = max(0.0, float(event.base_prob))
+            weighted_candidates.append((event.name, weight))
+
+        if not weighted_candidates:
+            return
+
+        total_weight = sum(weight for _, weight in weighted_candidates)
+        if total_weight <= 0:
+            selected_name = weighted_candidates[0][0]
+        else:
+            import random
+
+            names = [name for name, _ in weighted_candidates]
+            weights = [weight for _, weight in weighted_candidates]
+            selected_name = random.choices(names, weights=weights, k=1)[0]
+
+        self._force_event_by_name(selected_name)
 
     def _force_event_by_name(self, event_name):
         event = next((e for e in self.economy.events if e.name == event_name), None)
@@ -780,8 +802,13 @@ class GameLauncher:
         ttk.Label(self.frame, text="Scenario").pack(anchor="w", pady=(10, 2))
         scn = ttk.Frame(self.frame)
         scn.pack(fill=tk.X)
-        for name in SCENARIOS.keys():
-            ttk.Radiobutton(scn, text=name, variable=self.scenario, value=name).pack(anchor="w")
+        for scenario_name in SCENARIO_OPTIONS:
+            ttk.Radiobutton(
+                scn,
+                text=scenario_name,
+                variable=self.scenario,
+                value=scenario_name,
+            ).pack(anchor="w")
 
         ttk.Label(self.frame, text="Central Bank Mandate (future)").pack(anchor="w", pady=(10, 2))
         mandate_box = ttk.Combobox(
