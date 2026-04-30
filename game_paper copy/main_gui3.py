@@ -21,6 +21,7 @@ from economy import Economy
 
 
 offset = 10  # hidden turns
+PLAYER_START_TURN = 40
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {
     "Random": None,
@@ -67,6 +68,7 @@ class EconomicGameApp:
             difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
+        self.economy.player_start_turn = PLAYER_START_TURN
         # Likely intent issue preserved for equivalence:
         # bootstrap_initial_history() replaces self.economy, but these baselines are
         # not refreshed there or in new_game(). End-of-term text therefore compares
@@ -76,7 +78,7 @@ class EconomicGameApp:
         # self.initial_unemployment = self.economy.indicators.unemployment_rate
         self.initial_inflation = self.economy.indicators.inflation_rate
         self.initial_unemployment = self.economy.indicators.unemployment_rate
-        self.current_term_start = 41
+        self.current_term_start = PLAYER_START_TURN + 1
         self.term_length = 16
         self.current_event_name = None
         self.end_game_window = None
@@ -238,13 +240,15 @@ class EconomicGameApp:
             difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
+        self.economy.player_start_turn = PLAYER_START_TURN
         self._apply_scenario_initial_conditions()
         self.end_game_window = None
         self.graph_window_mode = "full"
         self.graph_split_mode = False
-        self.current_term_start = 41 + offset
+        self.current_term_start = PLAYER_START_TURN + 1 + offset
         self.news_text.delete("1.0", tk.END)
         self.economy.offset = offset
+        self.economy.player_start_turn = PLAYER_START_TURN
 
     def _apply_scenario_initial_conditions(self):
         if self.scenario_name != "High Inflation":
@@ -263,7 +267,7 @@ class EconomicGameApp:
         self.economy.simplified_dynamics = difficulty == "principles"
 
     def _autorun_initial_history(self):
-        total_turns = 40 + offset
+        total_turns = PLAYER_START_TURN + offset
         self._apply_bootstrap_persona()
         for idx in range(total_turns):
             self._apply_bootstrap_overrides_before_turn(idx, total_turns)
@@ -475,21 +479,24 @@ class EconomicGameApp:
     def plot_graphs(self):
         histories = self._visible_histories()
 
+        x = histories["quarters"]
+
         if self.graph_split_mode:
             self.fig.clf()
             ax_top = self.fig.add_subplot(2, 1, 1)
             ax_bottom = self.fig.add_subplot(2, 1, 2, sharex=ax_top)
 
             ax_top.set_facecolor("white")
-            ax_top.plot(histories["inflation"], label="Inflation Rate", color=self.inflation_color)
-            ax_top.plot(histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
+            ax_top.plot(x, histories["inflation"], label="Inflation Rate", color=self.inflation_color)
+            ax_top.plot(x, histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
             ax_top.set_ylabel("Percentage")
             ax_top.legend(fontsize=8)
             ax_top.grid(True, which="major", linewidth=0.8, alpha=0.4)
 
             ax_bottom.set_facecolor("white")
-            ax_bottom.plot(histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
-            ax_bottom.plot(histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
+            ax_bottom.plot(x, histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
+            if self.difficulty == "principles":
+                ax_bottom.plot(x, histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
             ax_bottom.set_xlabel("Quarter")
             ax_bottom.set_ylabel("Percentage")
             ax_bottom.legend(fontsize=8)
@@ -502,9 +509,11 @@ class EconomicGameApp:
             self.ax = self.fig.add_subplot(1, 1, 1)
             self.ax.clear()
             self.ax.set_facecolor("white")
-            self.ax.plot(histories["inflation"], label="Inflation Rate", color=self.inflation_color)
-            self.ax.plot(histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
-            self.ax.plot(histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
+            self.ax.plot(x, histories["inflation"], label="Inflation Rate", color=self.inflation_color)
+            self.ax.plot(x, histories["unemployment"], label="Unemployment Rate", color=self.unemployment_color)
+            self.ax.plot(x, histories["interest_rate"], label="Interest Rate", linestyle="--", color=self.interest_rate_color)
+            if self.difficulty == "principles":
+                self.ax.plot(x, histories["natural_unemployment"], label="Natural Unemployment", linestyle=":", color="black")
             self.ax.set_xlabel("Quarter")
             self.ax.set_ylabel("Percentage")
             self.ax.legend(fontsize=8)
@@ -519,18 +528,24 @@ class EconomicGameApp:
     def _visible_histories(self):
         window = 20 if self.graph_window_mode == "recent" else None
 
-        def clip(series):
-            base = series[offset:]
-            if window is None:
-                return base
-            return base[-window:]
+        inflation = self.economy.variables.get_history("inflation_rate")[offset:]
+        unemployment = self.economy.variables.get_history("unemployment_rate")[offset:]
+        interest_rate = self.economy.variables.get_history("interest_rate")[offset:]
+        natural_unemployment = self.economy.variables.get_history("natural_unemployment_rate")[offset:]
+        reputation = self.economy.variables.get_history("cb_reputation")[offset:]
+
+        total = len(inflation)
+        start_idx = max(0, total - window) if window is not None else 0
+        q_start = 1 + start_idx
+        quarters = list(range(q_start, q_start + (total - start_idx)))
 
         return {
-            "inflation": clip(self.economy.variables.get_history("inflation_rate")),
-            "unemployment": clip(self.economy.variables.get_history("unemployment_rate")),
-            "interest_rate": clip(self.economy.variables.get_history("interest_rate")),
-            "natural_unemployment": clip(self.economy.variables.get_history("natural_unemployment_rate")),
-            "reputation": clip(self.economy.variables.get_history("cb_reputation")),
+            "quarters": quarters,
+            "inflation": inflation[start_idx:],
+            "unemployment": unemployment[start_idx:],
+            "interest_rate": interest_rate[start_idx:],
+            "natural_unemployment": natural_unemployment[start_idx:],
+            "reputation": reputation[start_idx:],
         }
 
     def _draw_event_banner(self):
@@ -898,8 +913,21 @@ class GameLauncher:
         entry.pack(padx=10, pady=4)
         ttk.Label(top, text="Turns per simulation").pack(padx=10, pady=(6, 2))
         turns_entry = ttk.Entry(top)
-        turns_entry.insert(0, "40")
+        turns_entry.insert(0, str(PLAYER_START_TURN))
         turns_entry.pack(padx=10, pady=4)
+
+        ttk.Label(top, text="Difficulty").pack(padx=10, pady=(6, 2))
+        batch_difficulty = tk.StringVar(value=self.difficulty.get())
+        ttk.Combobox(top, textvariable=batch_difficulty, state="readonly", values=["principles", "senior", "central_banker"]).pack(padx=10, pady=4)
+
+        ttk.Label(top, text="Persona").pack(padx=10, pady=(6, 2))
+        batch_persona = tk.StringVar(value="random")
+        ttk.Combobox(top, textvariable=batch_persona, state="readonly", values=["random", "good", "dove", "hawk", "careless"]).pack(padx=10, pady=4)
+
+        ttk.Label(top, text="Scenario").pack(padx=10, pady=(6, 2))
+        batch_scenario = tk.StringVar(value=self.scenario.get())
+        ttk.Combobox(top, textvariable=batch_scenario, state="readonly", values=list(SCENARIOS.keys())).pack(padx=10, pady=4)
+
         out = tk.Text(top, width=70, height=14)
         out.pack(padx=10, pady=10)
 
@@ -907,26 +935,43 @@ class GameLauncher:
             import numpy as np
             n = max(1, int(entry.get()))
             turns = max(1, int(turns_entry.get()))
-            finals = []
+            infl_series = []
+            unemp_series = []
             errors = 0
+            total_turns_simulated = 0
+            total_events_fired = 0
+            selected_scenario = SCENARIOS.get(batch_scenario.get())
+
             for _ in range(n):
                 try:
-                    econ = Economy(difficulty=self.difficulty.get(), scenario=None)
+                    econ = Economy(difficulty=batch_difficulty.get(), scenario=selected_scenario)
+                    if batch_persona.get() != "random":
+                        econ.cb_persona = batch_persona.get()
                     for __ in range(turns):
                         econ.adjust_interest_rate_with_taylor()
-                        econ.simulate_quarter()
-                    finals.append((econ.indicators.inflation_rate, econ.indicators.unemployment_rate))
+                        result = econ.simulate_quarter()
+                        total_turns_simulated += 1
+                        if result.get("event_name"):
+                            total_events_fired += 1
+                        infl_series.append(econ.indicators.inflation_rate)
+                        unemp_series.append(econ.indicators.unemployment_rate)
                 except Exception:
                     errors += 1
-            infl = np.array([x[0] for x in finals])
-            unemp = np.array([x[1] for x in finals])
+            infl = np.array(infl_series)
+            unemp = np.array(unemp_series)
             out.delete("1.0", tk.END)
-            out.insert(tk.END, f"Difficulty: {self.difficulty.get()}\nRuns: {n}\nTurns: {turns}\n")
-            out.insert(tk.END, f"Inflation mean/median: {infl.mean():.2f} / {np.median(infl):.2f}\n")
-            out.insert(tk.END, f"Unemployment mean/median: {unemp.mean():.2f} / {np.median(unemp):.2f}\n")
-            out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
-            out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
-            out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
+            out.insert(tk.END, f"Difficulty: {batch_difficulty.get()}\nPersona: {batch_persona.get()}\nScenario: {batch_scenario.get()}\nRuns: {n}\nTurns: {turns}\n")
+            event_rate = (total_events_fired / total_turns_simulated) if total_turns_simulated else 0.0
+            out.insert(tk.END, f"Total turns simulated: {total_turns_simulated}\n")
+            out.insert(tk.END, f"Events fired: {total_events_fired} (rate: {event_rate:.1%})\n")
+            if len(infl) == 0 or len(unemp) == 0:
+                out.insert(tk.END, "No valid simulation data collected.\n")
+            else:
+                out.insert(tk.END, f"Inflation mean/median: {infl.mean():.2f} / {np.median(infl):.2f}\n")
+                out.insert(tk.END, f"Unemployment mean/median: {unemp.mean():.2f} / {np.median(unemp):.2f}\n")
+                out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
+                out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
+                out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
             out.insert(tk.END, f"Errors: {errors}\n")
 
         ttk.Button(top, text="Run", command=run).pack(pady=(0, 10))
