@@ -789,7 +789,7 @@ class GameLauncher:
         self.root = root
         self.frame = ttk.Frame(root, padding=16)
         self.frame.pack(fill=tk.BOTH, expand=True)
-        self.difficulty = tk.StringVar(value="central_banker")
+        self.difficulty = tk.StringVar(value="principles")
         self.scenario = tk.StringVar(value="Random")
         self.mandate = tk.StringVar(value="Inflation Target (future)")
         self._build()

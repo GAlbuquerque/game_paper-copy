@@ -284,10 +284,14 @@ class Economy:
             max(self.indicators.unemployment_rate + rate_effect + shocks[1], 1),
             100,
         )
-        return (
+        new_unemployment = (
             self.beta1["unemployment"] * bounded_level
             + (1 - self.beta1["unemployment"]) * new_natural_unemployment
         )
+        if new_unemployment < self.indicators.unemployment_rate:
+            decrease = self.indicators.unemployment_rate - new_unemployment
+            new_unemployment = self.indicators.unemployment_rate - (0.5 * decrease)
+        return new_unemployment
 
     def _compute_inflation(self, eff_real_rate, gap_effect, shocks, reputation):
         rate_effect_inflation = min(
