@@ -45,7 +45,7 @@ class Economy:
 
     def _difficulty_shock_scale(self, difficulty):
         return {
-            "principles": 0.0,
+            "principles": 0.1,
             "senior": 0.5,
             "central_banker": 1.0,
         }.get(difficulty, 1.0)
@@ -378,7 +378,7 @@ class Economy:
             for weight, gap in zip(normalized_weights, self.historical_gaps[-11:-1])
         )
         if self.simplified_dynamics:
-                weighted_gap = gap at -1
+            weighted_gap = self.historical_gaps[-1]
 
         if weighted_gap >= 0:
             gap_effect = -0.1 * weighted_gap
@@ -404,7 +404,37 @@ class Economy:
             ignore_index=True,
         )
 
+    def _recent_fiscal_event_count(self, within=4):
+        fiscal_names = {"Fiscal Deficit", "Spending Wave", "Fiscal Surplus"}
+        window = self.past_events[-within:] if hasattr(self, "past_events") else []
+        count = 0
+        for quarter_events in window:
+            if isinstance(quarter_events, list):
+                count += sum(1 for name in quarter_events if name in fiscal_names)
+            elif quarter_events in fiscal_names:
+                count += 1
+        return count
+
     def check_events(self, history):
+        inflation = history.get("inflation_rate", [0.0])[-1]
+        unemployment = history.get("unemployment_rate", [0.0])[-1]
+        natural_unemployment = history.get("natural_unemployment_rate", [0.0])[-1]
+
+        if self._recent_fiscal_event_count(within=4) == 0:
+            if inflation < 0 and unemployment > natural_unemployment:
+                target_name = (
+                    "Fiscal Deficit" if np.random.rand() < 0.5 else "Spending Wave"
+                )
+                for event in self.events:
+                    if event.name == target_name:
+                        self.last_event_quarter = self.current_quarter
+                        return event
+            if inflation > 10 and np.random.rand() < 0.5:
+                for event in self.events:
+                    if event.name == "Fiscal Surplus":
+                        self.last_event_quarter = self.current_quarter
+                        return event
+
         if self.event_cooldown_quarters > 0:
             if (self.current_quarter - self.last_event_quarter) < self.event_cooldown_quarters:
                 return None
