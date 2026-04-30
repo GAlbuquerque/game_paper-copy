@@ -133,7 +133,28 @@ class EconomicGameApp:
             style="Main.TLabelframe",
         )
         self.graph_frame.grid(row=4, column=0, columnspan=3, pady=5, sticky=(tk.W, tk.E))
+        self._build_graph_controls()
         self.create_graph_panel()
+
+    def _build_graph_controls(self):
+        controls = ttk.Frame(self.graph_frame, style="Main.TFrame")
+        controls.pack(fill=tk.X, padx=2, pady=(0, 6))
+
+        self.view_toggle_button = ttk.Button(
+            controls,
+            text="History: Full",
+            command=self.toggle_graph_window_mode,
+            style="Main.TButton",
+        )
+        self.view_toggle_button.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.split_toggle_button = ttk.Button(
+            controls,
+            text="Layout: Combined",
+            command=self.toggle_graph_split_mode,
+            style="Main.TButton",
+        )
+        self.split_toggle_button.pack(side=tk.LEFT)
 
     def _build_news_section(self):
         self.news_frame = ttk.LabelFrame(
@@ -201,22 +222,6 @@ class EconomicGameApp:
             style="Main.TButton",
         )
         self.next_button.grid(row=6, column=2, sticky=(tk.W, tk.E))
-
-        self.view_toggle_button = ttk.Button(
-            self.main_frame,
-            text="View: Full History",
-            command=self.toggle_graph_window_mode,
-            style="Main.TButton",
-        )
-        self.view_toggle_button.grid(row=7, column=0, sticky=(tk.W, tk.E), pady=(6, 0))
-
-        self.split_toggle_button = ttk.Button(
-            self.main_frame,
-            text="Graph: Combined",
-            command=self.toggle_graph_split_mode,
-            style="Main.TButton",
-        )
-        self.split_toggle_button.grid(row=7, column=1, sticky=(tk.W, tk.E), pady=(6, 0))
 
     def _bind_events(self):
         self.root.bind("<Return>", lambda event: self.next_turn())
@@ -577,14 +582,14 @@ class EconomicGameApp:
     def toggle_graph_window_mode(self):
         self.graph_window_mode = "recent" if self.graph_window_mode == "full" else "full"
         self.view_toggle_button.config(
-            text="View: Recent Turns" if self.graph_window_mode == "recent" else "View: Full History"
+            text="History: Recent" if self.graph_window_mode == "recent" else "History: Full"
         )
         self.plot_graphs()
 
     def toggle_graph_split_mode(self):
         self.graph_split_mode = not self.graph_split_mode
         self.split_toggle_button.config(
-            text="Graph: Split" if self.graph_split_mode else "Graph: Combined"
+            text="Layout: Split" if self.graph_split_mode else "Layout: Combined"
         )
         self.plot_graphs()
 
