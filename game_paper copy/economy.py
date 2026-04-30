@@ -271,11 +271,12 @@ class Economy:
             self.real_interest_rates.pop(0)
 
     def _compute_natural_unemployment(self, shocks):
+        drift_correction = -0.1
         return (
             self.beta1["natural_unemployment"]
             * self.indicators.natural_unemployment_rate
-            + (1 - self.beta1["natural_unemployment"]) * 4
             + shocks[2]
+            + drift_correction
         )
 
     def _compute_unemployment(self, new_natural_unemployment, rate_effect, shocks):

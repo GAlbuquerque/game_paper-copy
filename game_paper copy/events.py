@@ -368,7 +368,7 @@ def initialize_events() -> List[GameEvent]:
         prob_terms=[
             ProbTerm("a_base", lambda h: 0.02),
             ProbTerm("b_low_infl_high_unemp", lambda h: (
-                0.1 if (h.get("inflation_rate", [0])[-1] < 1.0 and
+                0.2 if (h.get("inflation_rate", [0])[-1] < 1.0 and
                          h.get("unemployment_rate", [0])[-1] > 10.0) else 0.0
             )),
             ProbTerm("c_recent_block",
@@ -390,17 +390,17 @@ def initialize_events() -> List[GameEvent]:
         prob_terms=[
             ProbTerm("a_base", lambda h: 0.005),
             ProbTerm("b_low_infl_high_unemp", lambda h: (
-                0.1 if (h.get("inflation_rate", [0])[-1] < 0 and
+                0.2 if (h.get("inflation_rate", [0])[-1] < 0 and
                          h.get("unemployment_rate", [0])[-1] > 12.0) else 0.0
             )),
             ProbTerm("c_recent_block",
                      lambda h: (-0.1 if recent_event_count(h, "Spending Wave", 8) > 0 else 0.0)),
         ],
         effects_schedule={
-            "inflation":             [0.7, 0.5, 0.5, 0.1, 0, 0, 0, 0],
+            "inflation":             [0.7, 1, 1, 0.5, 0.3, 0, 0, 0],
             "interest_rate":         [0, 0, 0, 0, 0, 0, 0, 0],
-            "real_rate_eq":          [3, 0, 0, 0, 0, -1, -1, -1],
-            "unemployment":          [-1.5, -3, -1.5, 0, 0, 0, 0, 0],
+            "real_rate_eq":          [4, 0, 0, 0, -1, -1, -1, -1],
+            "unemployment":          [-2, -2, -2, -1, -1, 0, 0, 0],
             "natural_unemployment":  [0, 0, 0, 0, 0, 0, 0, 0],
         },
     ))
