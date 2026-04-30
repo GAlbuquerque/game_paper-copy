@@ -36,6 +36,7 @@ class Economy:
         self.historical_data = self._build_historical_frame()
         self.last_event_quarter = -10_000
         self.offset = 0
+        self.player_start_turn = 40
 
     def _difficulty_event_cooldown(self, difficulty):
         return {
@@ -421,7 +422,12 @@ class Economy:
         unemployment = history.get("unemployment_rate", [0.0])[-1]
         natural_unemployment = history.get("natural_unemployment_rate", [0.0])[-1]
 
-        if self._recent_fiscal_event_count(within=4) == 0:
+        # Cooperative fiscal policy events are only active on player turns
+        # and only for principles difficulty.
+        player_turn = history.get("quarter_user", 0) > getattr(self, "player_start_turn", 40)
+        allow_coop_fiscal = self.difficulty == "principles" and player_turn
+
+        if allow_coop_fiscal and self._recent_fiscal_event_count(within=4) == 0:
             if inflation < 0 and unemployment > natural_unemployment:
                 target_name = (
                     "Fiscal Deficit" if np.random.rand() < 0.5 else "Spending Wave"
