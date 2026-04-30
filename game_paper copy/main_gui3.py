@@ -64,7 +64,7 @@ class EconomicGameApp:
 
     def _initialize_game_state(self):
         self.economy = Economy(
-            difficulty=self.difficulty,
+            difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
         # Likely intent issue preserved for equivalence:
@@ -208,6 +208,7 @@ class EconomicGameApp:
     def bootstrap_initial_history(self):
         self._reset_economy_for_bootstrap()
         self._autorun_initial_history()
+        self._activate_player_difficulty()
         self._sync_rate_entry_to_current_rate()
         self.update_ui()
         self.plot_graphs()
@@ -216,13 +217,21 @@ class EconomicGameApp:
         if not hasattr(self, "scenario_name"):
             self.scenario_name = "Random"
         self.economy = Economy(
-            difficulty=self.difficulty,
+            difficulty="central_banker",
             scenario=self._sample_scenario(self.scenario_name),
         )
         self.end_game_window = None
         self.current_term_start = 41 + offset
         self.news_text.delete("1.0", tk.END)
         self.economy.offset = offset
+
+
+    def _activate_player_difficulty(self):
+        difficulty = self.difficulty
+        self.economy.difficulty = difficulty
+        self.economy.event_cooldown_quarters = self.economy._difficulty_event_cooldown(difficulty)
+        self.economy.shock_sd_scale = self.economy._difficulty_shock_scale(difficulty)
+        self.economy.simplified_dynamics = difficulty == "principles"
 
     def _autorun_initial_history(self):
         total_turns = 40 + offset
