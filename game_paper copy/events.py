@@ -397,7 +397,7 @@ def initialize_events() -> List[GameEvent]:
                      lambda h: (-0.1 if recent_event_count(h, "Spending Wave", 8) > 0 else 0.0)),
         ],
         effects_schedule={
-            "inflation":             [0.5, 0.3, 0.3, 0, 0, 0, 0, 0],
+            "inflation":             [0.7, 0.5, 0.5, 0.1, 0, 0, 0, 0],
             "interest_rate":         [0, 0, 0, 0, 0, 0, 0, 0],
             "real_rate_eq":          [3, 0, 0, 0, 0, -1, -1, -1],
             "unemployment":          [-1.5, -3, -1.5, 0, 0, 0, 0, 0],
