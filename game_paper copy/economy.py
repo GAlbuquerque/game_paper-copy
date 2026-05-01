@@ -490,16 +490,7 @@ class Economy:
         self.indicators.inflation_rate += agg.get("inflation", 0.0)
         self.interest_rate += agg.get("interest_rate", 0.0)
 
-        # Likely intent issue preserved for equivalence:
-        # event schedules contain "real_rate_eq", but the live code only mutates
-        # legacy attributes that Economy never defines. That means event-driven
-        # "real_rate_eq" shocks currently do not change self.indicators.real_rate_eq.
-        # Intended alternative:
-        # self.indicators.real_rate_eq += agg.get("real_rate_eq", 0.0)
-        if hasattr(self, "real_rate_eq"):
-            self.real_rate_eq += agg.get("real_rate_eq", 0.0)
-        elif hasattr(self, "real_interest_eq"):
-            self.real_interest_eq += agg.get("real_rate_eq", 0.0)
+        self.indicators.real_rate_eq += agg.get("real_rate_eq", 0.0)
 
         self.indicators.unemployment_rate += agg.get("unemployment", 0.0)
         self.indicators.natural_unemployment_rate += agg.get(
