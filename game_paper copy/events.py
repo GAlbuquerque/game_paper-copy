@@ -183,7 +183,7 @@ def initialize_events() -> List[GameEvent]:
             )),
         ],
         effects_schedule={
-            "inflation":             [0.2, -0.7, -0.3, 0, 0, 0, 0, 0],
+            "inflation":             [-0.2, -0.5, -0.3, 0, 0, 0, 0, 0],
             "interest_rate":         [ 0.0, 0, 0, 0, 0, 0, 0, 0],
             "real_rate_eq":          [ -5, -2, 1, 1, 1, 1, 1, 2],
             "unemployment":          [ 1, 2, 3, 4, 3, 2.5, 2, 1],

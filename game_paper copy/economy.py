@@ -549,30 +549,32 @@ class Economy:
         inflation = self.indicators.inflation_rate
         unemployment = self.indicators.unemployment_rate
         natural_unemployment = self.indicators.natural_unemployment_rate
+        natural_rate = self.indicators.real_rate_eq
 
         if self.cb_persona == "good":
             return (
-                0.5
+                natural_rate 
                 + inflation
                 + 0.5 * (inflation - 2)
                 + 0.5 * (natural_unemployment - unemployment)
             )
         if self.cb_persona == "dove":
             return (
-                inflation
+                (natural_rate - 1)
+                + inflation
                 + 0.1 * (inflation - 4)
                 + 0.9 * (natural_unemployment - unemployment)
             )
         if self.cb_persona == "hawk":
             return (
-                3
+                (natural_rate + 1) 
                 + inflation
                 + 0.9 * (inflation - 1.5)
                 + 0.1 * (natural_unemployment - unemployment)
             )
         return (
-            -5
-            + inflation
+            (natural_rate -  1) 
+            + inflation/2
             + 0.05 * (inflation - 6)
             + 0.95 * (natural_unemployment - 3 - unemployment)
         )
