@@ -121,9 +121,9 @@ def initialize_events() -> List[GameEvent]:
         description="A financial crisis leads to a credit crunch and reduced investment.",
         prob_terms=[
             # a) small baseline
-            ProbTerm("a_base", lambda h: 0.02),
+            ProbTerm("a_base", lambda h: 0.01),
     
-            # b) hike vs 3 periods ago (percent → decimal), >=0, cap at 0.1
+            # b) hike vs 3 periods ago (percent → decimal), >=0, cap at 0.05
             ProbTerm("b_hike_vs_t-3", lambda h: (
                 min(
                     max(
@@ -134,17 +134,17 @@ def initialize_events() -> List[GameEvent]:
                         ) / 100,
                         0.0
                     ),
-                    0.01
+                    0.05
                 )
             )),
     
-            # c) tail streak of rate < 1% (count), scaled 0.005 per qtr, cap at 0.03
+            # c) tail streak of rate < 1% (count), scaled 0.005 per qtr, cap at 0.015
             ProbTerm("c_low_rate_streak", lambda h: (
                 min(
                     (lambda s: (lambda idx: (len(s) if idx is None else idx))(
                         next((i for i, x in enumerate(reversed(s)) if x >= 1.0), None)
                     ))(h.get("interest_rate", [])) * 0.005,
-                    0.03
+                    0.015
                 )
             )),
     
@@ -166,7 +166,7 @@ def initialize_events() -> List[GameEvent]:
         description=("Panic spreads through global markets, with commentators evoking the catastrophic collapse of 1929 as systemic crisis looms. "),
         prob_terms=[
             # Base
-            ProbTerm("a_base", lambda h: 0.005),
+            ProbTerm("a_base", lambda h: 0.0025),
     
             ProbTerm("b_jump_recent_crisis_highIR", lambda h: (
                 0.1 if (

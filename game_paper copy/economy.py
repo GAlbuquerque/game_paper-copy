@@ -283,10 +283,12 @@ class Economy:
         if self.simplified_dynamics:
             prev_real = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
             rate_effect = max(min((prev_real - self.indicators.real_rate_eq) * 0.25, 2.5), -1.0)
+            
         bounded_level = min(
             max(self.indicators.unemployment_rate + rate_effect + shocks[1], 1),
             100,
         )
+        
         new_unemployment = (
             self.beta1["unemployment"] * bounded_level
             + (1 - self.beta1["unemployment"]) * new_natural_unemployment
@@ -302,7 +304,7 @@ class Economy:
             0.5,
         )
         anchor = 2.0
-        sens = max(self.indicators.inflation_rate / 4, 0.5)
+        sens = max(self.indicators.inflation_rate / 10, 1)
         adaptive_beta = min(max(0.0, 1.0 - 0.2 * reputation), 1)
         inflation_persistence = self.beta1["inflation"]
         #if self.simplified_dynamics:
@@ -315,11 +317,13 @@ class Economy:
         )
         drift = (1 - adaptive_beta) * anchor
 
+        
         new_inflation = (
             adaptive_term
             + drift
             + shocks[0] * sens
-            + gap_effect+ rate_effect_inflation
+            + min(gap_effect *sens, 0.1*max(self.indicators.inflation_rate,1))
+            + rate_effect_inflation*sens
         )
 
         if new_inflation < 0 and self.indicators.inflation_rate > 10:
@@ -389,8 +393,8 @@ class Economy:
         else:
             natural_rate = self.indicators.natural_unemployment_rate
             unemployment_rate = self.indicators.unemployment_rate
-            inflation_rate = self.indicators.inflation_rate
-            gap_effect = min( (0.2 * natural_rate / (unemployment_rate + 1) + 0.1) * (-weighted_gap), 0.1*max(inflation_rate,1))
+            #inflation_rate = self.indicators.inflation_rate
+            gap_effect = (0.2 * natural_rate / (unemployment_rate + 1) + 0.1) * (-weighted_gap)
         
         return gap_effect
 
@@ -574,7 +578,7 @@ class Economy:
             )
         return (
             (natural_rate -  1) 
-            + inflation/2
+            + inflation
             + 0.05 * (inflation - 6)
             + 0.95 * (natural_unemployment - 3 - unemployment)
         )
