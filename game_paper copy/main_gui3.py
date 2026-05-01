@@ -966,12 +966,17 @@ class GameLauncher:
         top.title("Batch Simulation Test")
         ttk.Label(top, text="Number of simulations").pack(padx=10, pady=(10, 2))
         entry = ttk.Entry(top)
-        entry.insert(0, "25")
+        entry.insert(0, "100")
         entry.pack(padx=10, pady=4)
         ttk.Label(top, text="Turns per simulation").pack(padx=10, pady=(6, 2))
         turns_entry = ttk.Entry(top)
-        turns_entry.insert(0, str(PLAYER_START_TURN))
+        turns_entry.insert(0, "100")
         turns_entry.pack(padx=10, pady=4)
+
+        ttk.Label(top, text="Auto-play initialization turns").pack(padx=10, pady=(6, 2))
+        init_turns_entry = ttk.Entry(top)
+        init_turns_entry.insert(0, "40")
+        init_turns_entry.pack(padx=10, pady=4)
 
         ttk.Label(top, text="Difficulty").pack(padx=10, pady=(6, 2))
         batch_difficulty = tk.StringVar(value=self.difficulty.get())
@@ -992,44 +997,111 @@ class GameLauncher:
             import numpy as np
             n = max(1, int(entry.get()))
             turns = max(1, int(turns_entry.get()))
+            init_turns = max(0, int(init_turns_entry.get()))
             infl_series = []
             unemp_series = []
+            natural_unemp_initial = []
+            natural_unemp_final = []
+            natural_unemp_series = []
+            interest_initial = []
+            interest_final = []
+            interest_series = []
+            real_rate_eq_initial = []
+            real_rate_eq_final = []
+            real_rate_eq_series = []
+            zlb_turns = 0
             errors = 0
+            first_error = None
             total_turns_simulated = 0
             total_events_fired = 0
             selected_scenario = SCENARIOS.get(batch_scenario.get())
 
             for _ in range(n):
                 try:
-                    econ = Economy(difficulty=batch_difficulty.get(), scenario=selected_scenario)
-                    if batch_persona.get() != "random":
+                    econ = Economy(difficulty="central_banker", scenario=selected_scenario)
+
+                    scenario_bootstrap_persona = {
+                        "Stable Economy": "good",
+                        "Stagflation": "dove",
+                        "High Inflation": "careless",
+                        "Depression": "hawk",
+                    }.get(batch_scenario.get())
+                    if scenario_bootstrap_persona is not None:
+                        econ.cb_persona = scenario_bootstrap_persona
+
+                    for __ in range(init_turns):
+                        econ.adjust_interest_rate_with_taylor()
+                        result = econ.simulate_quarter()
+                        total_turns_simulated += 1
+                        if result.get("event_name"):
+                            total_events_fired += 1
+
+                    econ.difficulty = batch_difficulty.get()
+                    econ.event_cooldown_quarters = econ._difficulty_event_cooldown(econ.difficulty)
+                    econ.shock_sd_scale = econ._difficulty_shock_scale(econ.difficulty)
+                    econ.simplified_dynamics = econ.difficulty == "principles"
+
+                    if batch_persona.get() == "random":
+                        econ.cb_persona = econ._draw_cb_persona()
+                    else:
                         econ.cb_persona = batch_persona.get()
+
+                    natural_unemp_initial.append(econ.indicators.natural_unemployment_rate)
+                    interest_initial.append(econ.interest_rate)
+                    real_rate_eq_initial.append(econ.indicators.real_rate_eq)
+
                     for __ in range(turns):
                         econ.adjust_interest_rate_with_taylor()
                         result = econ.simulate_quarter()
                         total_turns_simulated += 1
                         if result.get("event_name"):
                             total_events_fired += 1
+
                         infl_series.append(econ.indicators.inflation_rate)
                         unemp_series.append(econ.indicators.unemployment_rate)
-                except Exception:
+                        natural_unemp_series.append(econ.indicators.natural_unemployment_rate)
+                        interest_series.append(econ.interest_rate)
+                        real_rate_eq_series.append(econ.indicators.real_rate_eq)
+                        if econ.interest_rate == 0 and econ.indicators.inflation_rate <= 0:
+                            zlb_turns += 1
+
+                    natural_unemp_final.append(econ.indicators.natural_unemployment_rate)
+                    interest_final.append(econ.interest_rate)
+                    real_rate_eq_final.append(econ.indicators.real_rate_eq)
+
+                except Exception as exc:
                     errors += 1
+                    if first_error is None:
+                        first_error = f"{type(exc).__name__}: {exc}"
             infl = np.array(infl_series)
             unemp = np.array(unemp_series)
+            natural_unemp = np.array(natural_unemp_series)
+            interest = np.array(interest_series)
+            real_rate_eq = np.array(real_rate_eq_series)
             out.delete("1.0", tk.END)
-            out.insert(tk.END, f"Difficulty: {batch_difficulty.get()}\nPersona: {batch_persona.get()}\nScenario: {batch_scenario.get()}\nRuns: {n}\nTurns: {turns}\n")
+            out.insert(tk.END, f"Difficulty: {batch_difficulty.get()}\nPersona: {batch_persona.get()}\nScenario: {batch_scenario.get()}\nRuns: {n}\nAuto-play init turns: {init_turns}\nPlayer turns: {turns}\n")
             event_rate = (total_events_fired / total_turns_simulated) if total_turns_simulated else 0.0
             out.insert(tk.END, f"Total turns simulated: {total_turns_simulated}\n")
             out.insert(tk.END, f"Events fired: {total_events_fired} (rate: {event_rate:.1%})\n")
             if len(infl) == 0 or len(unemp) == 0:
                 out.insert(tk.END, "No valid simulation data collected.\n")
             else:
+                out.insert(tk.END, "(All distribution stats below are based on player turns only.)\n")
                 out.insert(tk.END, f"Inflation mean/median: {infl.mean():.2f} / {np.median(infl):.2f}\n")
                 out.insert(tk.END, f"Unemployment mean/median: {unemp.mean():.2f} / {np.median(unemp):.2f}\n")
+                out.insert(tk.END, f"Natural unemployment (initial/final mean): {np.mean(natural_unemp_initial):.2f} / {np.mean(natural_unemp_final):.2f}\n")
+                out.insert(tk.END, f"Natural unemployment (player-turn mean/median): {natural_unemp.mean():.2f} / {np.median(natural_unemp):.2f}\n")
+                out.insert(tk.END, f"Interest rate (initial/final mean): {np.mean(interest_initial):.2f} / {np.mean(interest_final):.2f}\n")
+                out.insert(tk.END, f"Interest rate (player-turn mean/median): {interest.mean():.2f} / {np.median(interest):.2f}\n")
+                out.insert(tk.END, f"real_rate_eq (initial/final mean): {np.mean(real_rate_eq_initial):.2f} / {np.mean(real_rate_eq_final):.2f}\n")
+                out.insert(tk.END, f"real_rate_eq (player-turn mean/median): {real_rate_eq.mean():.2f} / {np.median(real_rate_eq):.2f}\n")
+                out.insert(tk.END, f"Turns at ZLB (i=0 and inflation<=0): {zlb_turns} ({(zlb_turns / len(infl)):.1%} of player turns)\n")
                 out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
                 out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
                 out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
             out.insert(tk.END, f"Errors: {errors}\n")
+            if first_error is not None:
+                out.insert(tk.END, f"First error: {first_error}\n")
 
         ttk.Button(top, text="Run", command=run).pack(pady=(0, 10))
 
