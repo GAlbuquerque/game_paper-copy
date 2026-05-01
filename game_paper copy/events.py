@@ -123,7 +123,7 @@ def initialize_events() -> List[GameEvent]:
             # a) small baseline
             ProbTerm("a_base", lambda h: 0.02),
     
-            # b) hike vs 3 periods ago (percent → decimal), >=0, cap at 0.30
+            # b) hike vs 3 periods ago (percent → decimal), >=0, cap at 0.1
             ProbTerm("b_hike_vs_t-3", lambda h: (
                 min(
                     max(
