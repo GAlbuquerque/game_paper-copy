@@ -22,7 +22,7 @@ from economy import Economy
 
 
 offset = 10  # hidden turns
-PLAYER_START_TURN = 40
+PLAYER_START_TURN = 100
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {
     "Random": None,
@@ -655,7 +655,8 @@ class EconomicGameApp:
                 text=f"{result['event_name']}\n    • {result['event']}"
             )
             self.current_event_name = result["event_name"]
-            self.rate_entry.delete(0, tk.END)
+            #self.rate_entry.delete(0, tk.END)
+            #disabled for tests
             return
 
         self.latest_event_label.config(text="")

@@ -271,7 +271,7 @@ class Economy:
             self.real_interest_rates.pop(0)
 
     def _compute_natural_unemployment(self, shocks):
-        drift_correction = -0.1
+        drift_correction = 0
         return (
             self.beta1["natural_unemployment"]
             * self.indicators.natural_unemployment_rate
@@ -552,7 +552,7 @@ class Economy:
 
         if self.cb_persona == "good":
             return (
-                0.9
+                0.5
                 + inflation
                 + 0.5 * (inflation - 2)
                 + 0.5 * (natural_unemployment - unemployment)
@@ -565,7 +565,7 @@ class Economy:
             )
         if self.cb_persona == "hawk":
             return (
-                2
+                3
                 + inflation
                 + 0.9 * (inflation - 1.5)
                 + 0.1 * (natural_unemployment - unemployment)

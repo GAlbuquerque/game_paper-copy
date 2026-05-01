@@ -310,8 +310,8 @@ def initialize_events() -> List[GameEvent]:
             "inflation":             [0.1, 0.2, 0, -0.5, -1, -1, -0.5, 0],
             "interest_rate":         [ 0.0, 0, 0, 0, 0, 0, 0, 0],
             "real_rate_eq":          [ 0.1, 0.2, 0, 0, -0.2, -0.1, 0, 0],
-            "unemployment":          [-0.3, -0.8, 0, 0, 0, 0, 0, 0],
-            "natural_unemployment":  [ -0.3, -0.3, 0, 0, 0.3, 0.3, 0, 0],
+            "unemployment":          [-0.3, -0.2, 0.5, 0.5, 0.5, 0.5, 0.1, 0.1],
+            "natural_unemployment":  [ -0.3, -0.3, 0.5, 0.5, 0.3, -0.3, -0.5, -0.5],
         },
     ))
 
@@ -342,8 +342,8 @@ def initialize_events() -> List[GameEvent]:
             "inflation":             [1, 2, 0, 0, 0, 0, 0, 0],
             "interest_rate":         [0, 0, 0, 0, 0, 0, 0, 0],
             "real_rate_eq":          [0, 0, 0, 0, 0, 0, 0, 0],
-            "unemployment":          [0.6, 0.3, 0, 0, 0, 0, 0, 0],
-            "natural_unemployment":  [0.2, 0.1, 0, 0, 0, 0, 0, 0],
+            "unemployment":          [0.3, 0.1, 0, 0, 0, 0, 0, 0],
+            "natural_unemployment":  [0.2, 0.1, 0, 0, 0, 0, 0, -0.3],
         },
     ))
     
@@ -357,7 +357,7 @@ def initialize_events() -> List[GameEvent]:
             "interest_rate":         [0, 0, 0, 0, 0, 0, 0, 0],
             "real_rate_eq":          [0.2, 0.2, 0.1, -0.1,-0.2 , -0.2, 0, 0],
             "unemployment":          [0.3, 0.5, 0.3, 0.1, 0, 0, 0, 0],
-            "natural_unemployment":  [1, 3, 3, 0, 0, -2, -2, -1],
+            "natural_unemployment":  [1, 3, 3, 0, -1, -2, -2, -2],
         },
     ))
     
