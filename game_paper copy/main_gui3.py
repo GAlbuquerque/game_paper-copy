@@ -1010,10 +1010,14 @@ class GameLauncher:
             real_rate_eq_final = []
             real_rate_eq_series = []
             zlb_turns = 0
+            max_zlb_spells = []
+            financial_crisis_count = 0
+            major_financial_crisis_count = 0
             errors = 0
             first_error = None
             total_turns_simulated = 0
             total_events_fired = 0
+            successful_runs = 0
             selected_scenario = SCENARIOS.get(batch_scenario.get())
 
             for _ in range(n):
@@ -1029,12 +1033,34 @@ class GameLauncher:
                     if scenario_bootstrap_persona is not None:
                         econ.cb_persona = scenario_bootstrap_persona
 
+                    def event_has_economic_impact(event_name):
+                        if not event_name:
+                            return False
+                        event = next((e for e in econ.events if e.name == event_name), None)
+                        if event is None:
+                            return False
+                        for values in event.effects_schedule.values():
+                            if isinstance(values, list):
+                                if any(abs(v) > 1e-12 for v in values):
+                                    return True
+                            elif abs(values) > 1e-12:
+                                return True
+                        return False
+
+                    run_max_zlb_spell = 0
+                    current_zlb_spell = 0
+
                     for __ in range(init_turns):
                         econ.adjust_interest_rate_with_taylor()
                         result = econ.simulate_quarter()
                         total_turns_simulated += 1
-                        if result.get("event_name"):
+                        event_name = result.get("event_name")
+                        if event_has_economic_impact(event_name):
                             total_events_fired += 1
+                        if event_name == "Financial Crisis":
+                            financial_crisis_count += 1
+                        elif event_name == "Major Financial Crisis":
+                            major_financial_crisis_count += 1
 
                     econ.difficulty = batch_difficulty.get()
                     econ.event_cooldown_quarters = econ._difficulty_event_cooldown(econ.difficulty)
@@ -1054,8 +1080,13 @@ class GameLauncher:
                         econ.adjust_interest_rate_with_taylor()
                         result = econ.simulate_quarter()
                         total_turns_simulated += 1
-                        if result.get("event_name"):
+                        event_name = result.get("event_name")
+                        if event_has_economic_impact(event_name):
                             total_events_fired += 1
+                        if event_name == "Financial Crisis":
+                            financial_crisis_count += 1
+                        elif event_name == "Major Financial Crisis":
+                            major_financial_crisis_count += 1
 
                         infl_series.append(econ.indicators.inflation_rate)
                         unemp_series.append(econ.indicators.unemployment_rate)
@@ -1064,6 +1095,13 @@ class GameLauncher:
                         real_rate_eq_series.append(econ.indicators.real_rate_eq)
                         if econ.interest_rate == 0 and econ.indicators.inflation_rate <= 0:
                             zlb_turns += 1
+                            current_zlb_spell += 1
+                            run_max_zlb_spell = max(run_max_zlb_spell, current_zlb_spell)
+                        else:
+                            current_zlb_spell = 0
+
+                    max_zlb_spells.append(run_max_zlb_spell)
+                    successful_runs += 1
 
                     natural_unemp_final.append(econ.indicators.natural_unemployment_rate)
                     interest_final.append(econ.interest_rate)
@@ -1082,7 +1120,9 @@ class GameLauncher:
             out.insert(tk.END, f"Difficulty: {batch_difficulty.get()}\nPersona: {batch_persona.get()}\nScenario: {batch_scenario.get()}\nRuns: {n}\nAuto-play init turns: {init_turns}\nPlayer turns: {turns}\n")
             event_rate = (total_events_fired / total_turns_simulated) if total_turns_simulated else 0.0
             out.insert(tk.END, f"Total turns simulated: {total_turns_simulated}\n")
-            out.insert(tk.END, f"Events fired: {total_events_fired} (rate: {event_rate:.1%})\n")
+            out.insert(tk.END, f"Economic-impact events fired: {total_events_fired} (rate: {event_rate:.1%})\n")
+            out.insert(tk.END, f"Financial Crisis events: {financial_crisis_count}\n")
+            out.insert(tk.END, f"Major Financial Crisis events: {major_financial_crisis_count}\n")
             if len(infl) == 0 or len(unemp) == 0:
                 out.insert(tk.END, "No valid simulation data collected.\n")
             else:
@@ -1096,6 +1136,8 @@ class GameLauncher:
                 out.insert(tk.END, f"real_rate_eq (initial/final mean): {np.mean(real_rate_eq_initial):.2f} / {np.mean(real_rate_eq_final):.2f}\n")
                 out.insert(tk.END, f"real_rate_eq (player-turn mean/median): {real_rate_eq.mean():.2f} / {np.median(real_rate_eq):.2f}\n")
                 out.insert(tk.END, f"Turns at ZLB (i=0 and inflation<=0): {zlb_turns} ({(zlb_turns / len(infl)):.1%} of player turns)\n")
+                if successful_runs > 0:
+                    out.insert(tk.END, f"Average longest ZLB spell per run: {np.mean(max_zlb_spells):.2f} turns\n")
                 out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
                 out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
                 out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")
