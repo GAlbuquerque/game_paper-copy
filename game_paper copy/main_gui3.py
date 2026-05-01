@@ -1093,7 +1093,7 @@ class GameLauncher:
                         natural_unemp_series.append(econ.indicators.natural_unemployment_rate)
                         interest_series.append(econ.interest_rate)
                         real_rate_eq_series.append(econ.indicators.real_rate_eq)
-                        if econ.interest_rate == 0 and econ.indicators.inflation_rate <= 0:
+                        if econ.indicators.inflation_rate <= 0:
                             zlb_turns += 1
                             current_zlb_spell += 1
                             run_max_zlb_spell = max(run_max_zlb_spell, current_zlb_spell)
@@ -1135,9 +1135,9 @@ class GameLauncher:
                 out.insert(tk.END, f"Interest rate (player-turn mean/median): {interest.mean():.2f} / {np.median(interest):.2f}\n")
                 out.insert(tk.END, f"real_rate_eq (initial/final mean): {np.mean(real_rate_eq_initial):.2f} / {np.mean(real_rate_eq_final):.2f}\n")
                 out.insert(tk.END, f"real_rate_eq (player-turn mean/median): {real_rate_eq.mean():.2f} / {np.median(real_rate_eq):.2f}\n")
-                out.insert(tk.END, f"Turns at ZLB (i=0 and inflation<=0): {zlb_turns} ({(zlb_turns / len(infl)):.1%} of player turns)\n")
+                out.insert(tk.END, f"Turns at inflation<=0: {zlb_turns} ({(zlb_turns / len(infl)):.1%} of player turns)\n")
                 if successful_runs > 0:
-                    out.insert(tk.END, f"Average longest ZLB spell per run: {np.mean(max_zlb_spells):.2f} turns\n")
+                    out.insert(tk.END, f"Average longest negative inflation spell per run: {np.mean(max_zlb_spells):.2f} turns\n")
                 out.insert(tk.END, f"P(inflation < 3%): {(infl < 3).mean():.1%}\n")
                 out.insert(tk.END, f"P(unemployment < 7%): {(unemp < 7).mean():.1%}\n")
                 out.insert(tk.END, f"P(stagflation: infl>5 and unemp>8): {((infl > 5) & (unemp > 8)).mean():.1%}\n")

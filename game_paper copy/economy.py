@@ -280,9 +280,6 @@ class Economy:
         )
 
     def _compute_unemployment(self, new_natural_unemployment, rate_effect, shocks):
-        if self.simplified_dynamics:
-            prev_real = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
-            rate_effect = max(min((prev_real - self.indicators.real_rate_eq) * 0.25, 2.5), -1.0)
             
         bounded_level = min(
             max(self.indicators.unemployment_rate + rate_effect + shocks[1], 1),
@@ -299,6 +296,9 @@ class Economy:
         return new_unemployment
 
     def _compute_inflation(self, eff_real_rate, gap_effect, shocks, reputation):
+        if self.simplified_dynamics:
+            prev_real = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
+            
         rate_effect_inflation = min(
             max((eff_real_rate - self.indicators.real_rate_eq) * (-0.1), -2),
             0.5,
