@@ -146,7 +146,7 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     rate = interest_rate_history[start_idx:]
 
     if split_mode:
-        fig, axes = plt.subplots(2, 1, figsize=(6, 4), dpi=80, sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(8, 4), dpi=80, sharex=True)
         axes[0].plot(x, infl, color="red", label="Inflation")
         axes[0].plot(x, rate, color="green", linestyle="--", label="Interest Rate")
         axes[1].plot(x, unemp, color="blue", label="Unemployment")
@@ -168,7 +168,7 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
             if t["unemployment"] is not None:
                 axes[1].axhline(t["unemployment"], color="blue", linestyle=':', alpha=0.6)
     else:
-        fig, ax = plt.subplots(figsize=(6, 4), dpi=80)
+        fig, ax = plt.subplots(figsize=(8, 4), dpi=80)
         ax.plot(x, infl, label="Inflation", color="red")
         ax.plot(x, unemp, label="Unemployment", color="blue")
         ax.plot(x, rate, label="Interest Rate", color="green", linestyle="--")
@@ -492,7 +492,7 @@ def main() -> None:
 
         st.markdown("### News Feed")
         if st.session_state.news_log:
-            for item in st.session_state.news_log[-12:]:
+            for item in st.session_state.news_log[-5:]:
                 st.write(f"- {item}")
         else:
             st.write("No events yet.")
