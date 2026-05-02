@@ -97,7 +97,7 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
     st.session_state.latest_fired = False
 
 
-def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targets: bool, mandate: str, dual_unemployment_target: int):
+def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targets: bool, mandate: str, dual_unemployment_target: int, show_news_banner: bool):
     inflation_history = econ.variables.get_history("inflation_rate")
     unemployment_history = econ.variables.get_history("unemployment_rate")
     interest_rate_history = econ.variables.get_history("interest_rate")
@@ -131,6 +131,18 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
             targets.append({"Value": t["unemployment"], "Color": "blue"})
         target_chart = alt.Chart(pd.DataFrame(targets)).mark_rule(strokeDash=[2, 2], opacity=0.6).encode(y="Value:Q", color=alt.Color("Color:N", scale=None))
         layers.append(target_chart)
+
+    if show_news_banner and quarters:
+        max_y = max(inflation_history[start_idx:] + unemployment_history[start_idx:] + interest_rate_history[start_idx:])
+        mid_q = quarters[len(quarters) // 2]
+        news_banner = alt.Chart(pd.DataFrame([{"Quarter": mid_q, "Value": max_y + 0.8, "Label": "NEWS!"}])).mark_text(
+            color="red",
+            fontSize=20,
+            fontWeight="bold",
+            align="center",
+            baseline="top",
+        ).encode(x="Quarter:Q", y="Value:Q", text="Label:N")
+        layers.append(news_banner)
 
     chart = alt.layer(*layers).properties(height=320)
     return alt.vconcat(chart.transform_filter("datum.Panel == 'Top'"), chart.transform_filter("datum.Panel == 'Bottom'")).resolve_scale(color='shared') if split_mode else chart
@@ -239,37 +251,34 @@ def main() -> None:
     outer_left, outer_right = st.columns([1.1, 2.2])
 
     with outer_left:
-        st.markdown("### Economic Indicators")
-        st.markdown(f"**Inflation Rate:** {state['inflation_rate']:.2f}%")
-        st.markdown(f"**Unemployment Rate:** {state['unemployment_rate']:.2f}%")
-        st.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
-
         st.markdown("### News Feed")
-        with st.container(border=False):
-            st.markdown('<div style="background:#2f2f2f;padding:10px;border-radius:8px;max-height:420px;overflow-y:auto;">', unsafe_allow_html=True)
+        news_container = st.container(height=620, border=True)
+        with news_container:
             if st.session_state.news_log:
                 for idx, item in enumerate(reversed(st.session_state.news_log)):
-                    color = "#ff4b4b" if idx == 0 and st.session_state.latest_fired else "#ffffff"
+                    color = "red" if idx == 0 and st.session_state.latest_fired else "inherit"
                     label = f"Q{item['quarter']}: {item['name']}"
-                    if st.button(label, key=f"news_{item['quarter']}_{idx}"):
-                        st.session_state[f"open_news_{item['quarter']}_{idx}"] = not st.session_state.get(f"open_news_{item['quarter']}_{idx}", False)
-                    if st.session_state.get(f"open_news_{item['quarter']}_{idx}", False) and item.get("detail"):
-                        st.markdown(f"<div style='color:#ffffff;margin:0 0 8px 0;'>{item['detail']}</div>", unsafe_allow_html=True)
-                    st.markdown(f"<div style='margin-top:-30px;margin-left:8px;color:{color};'>{label}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='color:{color};font-weight:600'>{label}</div>", unsafe_allow_html=True)
+                    if item.get("detail"):
+                        with st.expander(f"▶ Details for {label}", expanded=False):
+                            st.write(item["detail"])
             else:
-                st.markdown("<div style='color:#ffffff;'>No events yet.</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                st.write("No events yet.")
 
     with outer_right:
+        st.markdown("### Economic Indicators")
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(f"**Inflation Rate:** {state['inflation_rate']:.2f}%")
+        c2.markdown(f"**Unemployment Rate:** {state['unemployment_rate']:.2f}%")
+        c3.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
+
         st.markdown("### Economic Graphs")
-        if st.session_state.latest_fired:
-            st.markdown("<div style='color:red;font-weight:700;'>NEWS!</div>", unsafe_allow_html=True)
         g1, g2, g3 = st.columns(3)
         st.session_state.graph_window_mode = "past20" if g1.toggle("Past 20 turns", value=(st.session_state.graph_window_mode == "past20")) else "full"
         st.session_state.graph_split_mode = g2.toggle("Split charts", value=st.session_state.graph_split_mode)
         st.session_state.show_targets_on_graph = g3.toggle("Show targets", value=st.session_state.show_targets_on_graph)
 
-        chart = _plot_histories(econ, st.session_state.graph_window_mode, st.session_state.graph_split_mode, st.session_state.show_targets_on_graph, st.session_state.mandate, st.session_state.dual_unemployment_target)
+        chart = _plot_histories(econ, st.session_state.graph_window_mode, st.session_state.graph_split_mode, st.session_state.show_targets_on_graph, st.session_state.mandate, st.session_state.dual_unemployment_target, st.session_state.latest_fired)
         st.altair_chart(chart, use_container_width=True)
 
     st.markdown("### Policy action")
