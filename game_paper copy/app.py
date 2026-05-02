@@ -163,8 +163,8 @@ def _finish_game_if_needed() -> None:
 
     st.session_state.game_over = True
     econ = st.session_state.economy
-    term_start_idx = max(0, PLAYER_START_TURN + OFFSET)
-    term_end_idx = term_start_idx + TERM_LENGTH
+    term_end_idx = econ.current_quarter
+    term_start_idx = max(0, term_end_idx - TERM_LENGTH)
 
     infl_term = econ.variables.get_history("inflation_rate")[term_start_idx:term_end_idx]
     unemp_term = econ.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx]
@@ -221,6 +221,7 @@ def _render_end_dialog() -> None:
         if c1.button("Continue Playing", width="stretch"):
             st.session_state.game_over = False
             st.session_state.show_end_dialog = False
+            st.session_state.in_term_quarter = 1
             st.rerun()
         if c2.button("Retire", width="stretch"):
             st.session_state.show_end_dialog = False
