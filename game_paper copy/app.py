@@ -287,8 +287,8 @@ def main() -> None:
 
     with outer_left:
         st.markdown("### News Feed")
-        top_panel_height = 220
-        news_container = st.container(height=top_panel_height, border=True)
+        #top_panel_height = 220
+        news_container = st.container(height=687, border=True)
         with news_container:
             if st.session_state.news_log:
                 for idx, item in enumerate(list(reversed(st.session_state.news_log))):
@@ -303,15 +303,14 @@ def main() -> None:
 
     with outer_right:
         st.markdown("### Economic Indicators")
-        indicators_container = st.container(height=top_panel_height, border=False)
-        with indicators_container:
-            c1, c2, c3 = st.columns(3)
-            c1.markdown(f"**Inflation Rate:** {state['inflation_rate']:.2f}%")
-            c2.markdown(f"**Unemployment Rate:** {state['unemployment_rate']:.2f}%")
-            c3.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
+       # indicators_container = st.container(height=top_panel_height, border=False)        
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(f"**Inflation Rate:** {state['inflation_rate']:.2f}%")
+        c2.markdown(f"**Unemployment Rate:** {state['unemployment_rate']:.2f}%")
+        c3.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
 
         st.markdown("### Economic Graphs")
-        graph_container = st.container(height=560, border=True)
+        graph_container = st.container(height=375, border=False)
         with graph_container:
             g1, g2, g3, g4 = st.columns(4)
             st.session_state.graph_window_mode = "past20" if g1.toggle("Past 20 turns", value=(st.session_state.graph_window_mode == "past20")) else "full"
