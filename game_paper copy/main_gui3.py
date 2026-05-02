@@ -830,7 +830,7 @@ class EconomicGameApp:
         self.end_game_window.title("End of Game")
         self.end_game_window.transient(self.root)
         self.end_game_window.grab_set()
-        self.end_game_window.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.end_game_window.protocol("WM_DELETE_WINDOW", self._close_end_game_window)
 
         end_game_frame = ttk.Frame(self.end_game_window, style="Main.TFrame", padding=10)
         end_game_frame.pack(fill=tk.BOTH, expand=True)
@@ -863,6 +863,10 @@ class EconomicGameApp:
             style="Main.TButton",
         )
         retire_button.pack(side=tk.RIGHT, padx=20)
+
+    def _close_end_game_window(self):
+        if self.end_game_window and self.end_game_window.winfo_exists():
+            self.on_continue(self.end_game_window)
 
     def on_continue(self, window):
         window.grab_release()
@@ -1016,7 +1020,6 @@ class GameLauncher:
 
     def _build(self):
         ttk.Label(self.frame, text=APP_TITLE, font=("Helvetica", 24)).pack(pady=6)
-        ttk.Button(self.frame, text="Load Game (coming soon)", command=self._load_stub).pack(fill=tk.X, pady=4)
         ttk.Label(self.frame, text="Create New Game").pack(anchor="w", pady=(12, 2))
         diff_frame = ttk.Frame(self.frame)
         diff_frame.pack(fill=tk.X)
@@ -1027,7 +1030,7 @@ class GameLauncher:
         ]
         for label, value in options:
             ttk.Radiobutton(diff_frame, text=label, variable=self.difficulty, value=value).pack(anchor="w")
-        ttk.Button(diff_frame, text="Custom (disabled for now)", state=tk.DISABLED).pack(anchor="w", pady=2)
+        ttk.Button(diff_frame, text="Custom (coming soon)", state=tk.DISABLED).pack(anchor="w", pady=2)
 
         ttk.Label(self.frame, text="Scenario").pack(anchor="w", pady=(10, 2))
         scn = ttk.Frame(self.frame)
@@ -1036,15 +1039,12 @@ class GameLauncher:
             ttk.Radiobutton(scn, text=name, variable=self.scenario, value=name).pack(anchor="w")
 
         ttk.Label(self.frame, text="Central Bank Mandate").pack(anchor="w", pady=(10, 2))
-        mandate_box = ttk.Combobox(
-            self.frame,
-            textvariable=self.mandate,
-            state="readonly",
-            values=["Inflation Target", "Dual Mandate", "Custom (coming soon)"],
-        )
-        mandate_box.pack(fill=tk.X)
-        mandate_box.current(0)
+        mandate_frame = ttk.Frame(self.frame)
+        mandate_frame.pack(fill=tk.X)
+        for mandate_name in ["Inflation Target", "Dual Mandate", "Custom (coming soon)"]:
+            ttk.Radiobutton(mandate_frame, text=mandate_name, variable=self.mandate, value=mandate_name).pack(anchor="w")
         ttk.Button(self.frame, text="Start New Game", command=self._start_game).pack(fill=tk.X, pady=(12, 4))
+        ttk.Button(self.frame, text="Load Game (coming soon)", command=self._load_stub).pack(fill=tk.X, pady=4)
         ttk.Button(self.frame, text="Run Batch Simulations", command=self._batch_test_dialog).pack(fill=tk.X, pady=4)
 
     def _load_stub(self):
