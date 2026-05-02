@@ -186,13 +186,14 @@ def _finish_game_if_needed() -> None:
     unemp_term = econ.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx]
     real_term = econ.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx]
 
-    term_events = [
+    term_events_raw = [
         e["name"]
         for e in st.session_state.news_log
         if e.get("in_term_quarter", 0) > 0
         and e["in_term_quarter"] <= TERM_LENGTH
         and _event_has_economic_impact(econ, e.get("name", ""))
     ]
+    term_events = list(dict.fromkeys(term_events_raw))
 
     end_ctx = EndGameContext(
         mandate=st.session_state.mandate,
