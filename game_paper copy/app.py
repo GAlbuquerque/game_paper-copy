@@ -107,14 +107,14 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
 
     rows = []
     for i, q in enumerate(quarters):
-        rows.append({"Quarter": q, "Metric": "Inflation", "Value": inflation_history[start_idx + i], "Panel": "Top" if split_mode else "Combined"})
-        rows.append({"Quarter": q, "Metric": "Interest Rate", "Value": interest_rate_history[start_idx + i], "Panel": "Top" if split_mode else "Combined"})
-        rows.append({"Quarter": q, "Metric": "Unemployment", "Value": unemployment_history[start_idx + i], "Panel": "Bottom" if split_mode else "Combined"})
+        rows.append({"Quarter": q, "Metric": "Inflation", "Value": inflation_history[start_idx + i], "Panel": "left"})
+        rows.append({"Quarter": q, "Metric": "Interest Rate", "Value": interest_rate_history[start_idx + i], "Panel": "left"})
+        rows.append({"Quarter": q, "Metric": "Unemployment", "Value": unemployment_history[start_idx + i], "Panel": "right"})
 
     if econ.difficulty == "principles":
         natural = econ.variables.get_history("natural_unemployment_rate")[start_idx:]
         for i, q in enumerate(quarters):
-            rows.append({"Quarter": q, "Metric": "Natural unemployment", "Value": natural[i], "Panel": "Bottom" if split_mode else "Combined"})
+            rows.append({"Quarter": q, "Metric": "Natural unemployment", "Value": natural[i], "Panel": "right"})
 
     df = pd.DataFrame(rows)
     palette = {"Inflation": "red", "Unemployment": "blue", "Interest Rate": "green", "Natural unemployment": "black"}
@@ -127,35 +127,49 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     )
 
     player_line = alt.Chart(pd.DataFrame([{"Quarter": PLAYER_START_TURN + OFFSET}])).mark_rule(color="black", strokeDash=[4, 4]).encode(x="Quarter:Q")
-    layers = [base, player_line]
 
+    target_layers_left, target_layers_right = [], []
     if show_targets:
         t = mandate_targets(mandate, dual_unemployment_target)
-        targets = [{"Value": t["inflation"], "Color": "red"}]
+        target_layers_left.append(alt.Chart(pd.DataFrame([{"Value": t["inflation"]}])).mark_rule(color="red", strokeDash=[2, 2], opacity=0.6).encode(y="Value:Q"))
         if t["unemployment"] is not None:
-            targets.append({"Value": t["unemployment"], "Color": "blue"})
-        target_chart = alt.Chart(pd.DataFrame(targets)).mark_rule(strokeDash=[2, 2], opacity=0.6).encode(y="Value:Q", color=alt.Color("Color:N", scale=None))
-        layers.append(target_chart)
+            target_layers_right.append(alt.Chart(pd.DataFrame([{"Value": t["unemployment"]}])).mark_rule(color="blue", strokeDash=[2, 2], opacity=0.6).encode(y="Value:Q"))
 
+    news_layer = None
     if show_news_banner and quarters:
         max_y = max(inflation_history[start_idx:] + unemployment_history[start_idx:] + interest_rate_history[start_idx:])
         mid_q = quarters[len(quarters) // 2]
-        news_banner = alt.Chart(pd.DataFrame([{"Quarter": mid_q, "Value": max_y + 0.8, "Label": "NEWS!"}])).mark_text(
-            color="red",
-            fontSize=20,
-            fontWeight="bold",
-            align="center",
-            baseline="top",
+        news_layer = alt.Chart(pd.DataFrame([{"Quarter": mid_q, "Value": max_y + 0.8, "Label": "NEWS!"}])).mark_text(
+            color="red", fontSize=20, fontWeight="bold", align="center", baseline="top"
         ).encode(x="Quarter:Q", y="Value:Q", text="Label:N")
-        layers.append(news_banner)
 
-    chart = alt.layer(*layers).properties(height=320)
     if split_mode:
-        top = chart.transform_filter("datum.Panel == 'Top'").properties(height=320, width=320)
-        bottom = chart.transform_filter("datum.Panel == 'Bottom'").properties(height=320, width=320)
-        return alt.hconcat(top, bottom).resolve_scale(color='shared')
-    return chart
+        left_chart = alt.layer(base.transform_filter("datum.Panel == 'left'"), player_line, *target_layers_left).properties(height=320, width=360)
+        right_layers = [base.transform_filter("datum.Panel == 'right'"), player_line, *target_layers_right]
+        if news_layer is not None:
+            right_layers.append(news_layer)
+        right_chart = alt.layer(*right_layers).properties(height=320, width=360)
+        return alt.hconcat(left_chart, right_chart).resolve_scale(color='shared')
 
+    layers = [base, player_line, *target_layers_left, *target_layers_right]
+    if news_layer is not None:
+        layers.append(news_layer)
+    return alt.layer(*layers).properties(height=320)
+
+
+def _event_has_economic_impact(econ: Economy, event_name: str) -> bool:
+    if not event_name:
+        return False
+    event = next((e for e in econ.events if e.name == event_name), None)
+    if event is None:
+        return False
+    for values in event.effects_schedule.values():
+        if isinstance(values, list):
+            if any(abs(v) > 1e-12 for v in values):
+                return True
+        elif abs(values) > 1e-12:
+            return True
+    return False
 
 def _finish_game_if_needed() -> None:
     if st.session_state.in_term_quarter <= TERM_LENGTH:
@@ -163,14 +177,21 @@ def _finish_game_if_needed() -> None:
 
     st.session_state.game_over = True
     econ = st.session_state.economy
-    term_start_idx = max(0, PLAYER_START_TURN + OFFSET)
-    term_end_idx = term_start_idx + TERM_LENGTH
+    term_end_idx = econ.current_quarter
+    term_start_idx = max(0, term_end_idx - TERM_LENGTH)
 
     infl_term = econ.variables.get_history("inflation_rate")[term_start_idx:term_end_idx]
     unemp_term = econ.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx]
     real_term = econ.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx]
 
-    term_events = [e["name"] for e in st.session_state.news_log if e.get("in_term_quarter", 0) > 0 and e["in_term_quarter"] <= TERM_LENGTH]
+    term_events_raw = [
+        e["name"]
+        for e in st.session_state.news_log
+        if e.get("in_term_quarter", 0) > 0
+        and e["in_term_quarter"] <= TERM_LENGTH
+        and _event_has_economic_impact(econ, e.get("name", ""))
+    ]
+    term_events = list(dict.fromkeys(term_events_raw))
 
     end_ctx = EndGameContext(
         mandate=st.session_state.mandate,
@@ -221,6 +242,7 @@ def _render_end_dialog() -> None:
         if c1.button("Continue Playing", width="stretch"):
             st.session_state.game_over = False
             st.session_state.show_end_dialog = False
+            st.session_state.in_term_quarter = 1
             st.rerun()
         if c2.button("Retire", width="stretch"):
             st.session_state.show_end_dialog = False
