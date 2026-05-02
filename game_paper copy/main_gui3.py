@@ -725,14 +725,17 @@ class EconomicGameApp:
 
     def check_end_of_game(self):
         self.next_button.config(state=tk.DISABLED)
+        term_start_idx = max(0, self.current_term_start - 1)
+        term_end_idx = max(term_start_idx, self.current_term_start - 1 + self.term_length)
         message = build_end_of_term_message(
             EndGameContext(
                 mandate=self.mandate,
                 initial_inflation=self.initial_inflation,
                 initial_unemployment=self.initial_unemployment,
                 dual_unemployment_target=self.dual_unemployment_target,
-                inflation_history=self.economy.variables.get_history("inflation_rate"),
-                unemployment_history=self.economy.variables.get_history("unemployment_rate"),
+                inflation_history=self.economy.variables.get_history("inflation_rate")[term_start_idx:term_end_idx],
+                unemployment_history=self.economy.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx],
+                real_interest_rate_history=self.economy.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx],
                 current_event_name=self.current_event_name,
             )
         )

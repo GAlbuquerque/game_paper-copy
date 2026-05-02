@@ -10,6 +10,7 @@ class EndGameContext:
     dual_unemployment_target: int
     inflation_history: Sequence[float]
     unemployment_history: Sequence[float]
+    real_interest_rate_history: Sequence[float]
     current_event_name: Optional[str]
 
 
@@ -26,17 +27,23 @@ def mandate_text(mandate: str, dual_unemployment_target: int) -> str:
     return "Inflation target mandate: keep inflation near 2.0%."
 
 
-def classify_public_view(infl_hist: Sequence[float], unemp_hist: Sequence[float]):
+def classify_public_view(
+    infl_hist: Sequence[float],
+    unemp_hist: Sequence[float],
+    real_rate_hist: Sequence[float],
+):
     if not infl_hist:
         return "Balanced", "Economic historians call your record technocratic and disciplined."
     hawk = sum(1 for i, u in zip(infl_hist, unemp_hist) if i > 3.0 and u < 5.0)
     dove = sum(1 for i, u in zip(infl_hist, unemp_hist) if u > 6.0 and i < 3.0)
     careless = sum(1 for i, u in zip(infl_hist, unemp_hist) if i > 8.0 or u > 9.0)
+    very_tight = sum(1 for r in real_rate_hist if r > 4.0)
+    very_loose = sum(1 for r in real_rate_hist if r < -1.0)
     if careless >= 6:
         return "Careless", "Market historians describe your approach as improvisation by turbulence."
-    if hawk >= 15:
+    if hawk + very_tight >= 15:
         return "Hawk", "Bond markets saw you as inflation-first and uncompromising."
-    if dove >= 15:
+    if dove + very_loose >= 15:
         return "Dove", "Labor groups remember you as employment-first and patient on prices."
     return "Steady Hand", "Economic historians view you as balanced under pressure."
 
@@ -75,7 +82,7 @@ def build_end_of_term_message(ctx: EndGameContext) -> str:
         half_close_unemp = un_gap4 <= 0.5 * un_gap0 if un_gap0 > 0 else True
 
     mixed = (not success) and improved_infl and improved_unemp and (half_close_infl or half_close_unemp)
-    label, reput = classify_public_view(infl[-20:], unemp[-20:])
+    label, reput = classify_public_view(infl[-20:], unemp[-20:], list(ctx.real_interest_rate_history)[-20:])
     event_ref = ctx.current_event_name or "a volatile policy cycle"
 
     if success:
