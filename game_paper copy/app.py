@@ -83,6 +83,7 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
     st.session_state.game_over = False
     st.session_state.player_turn = 1
     st.session_state.in_term_quarter = 1
+    st.session_state.term_start_idx = max(0, PLAYER_START_TURN + OFFSET)
     st.session_state.initial_inflation = econ.indicators.inflation_rate
     st.session_state.initial_unemployment = econ.indicators.unemployment_rate
     st.session_state.difficulty = difficulty
