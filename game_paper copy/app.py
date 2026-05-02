@@ -157,20 +157,41 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     return chart
 
 
+
+def _event_has_economic_impact(econ: Economy, event_name: str) -> bool:
+    if not event_name:
+        return False
+    event = next((e for e in econ.events if e.name == event_name), None)
+    if event is None:
+        return False
+    for values in event.effects_schedule.values():
+        if isinstance(values, list):
+            if any(abs(v) > 1e-12 for v in values):
+                return True
+        elif abs(values) > 1e-12:
+            return True
+    return False
+
 def _finish_game_if_needed() -> None:
     if st.session_state.in_term_quarter <= TERM_LENGTH:
         return
 
     st.session_state.game_over = True
     econ = st.session_state.economy
-    term_start_idx = max(0, PLAYER_START_TURN + OFFSET)
-    term_end_idx = term_start_idx + TERM_LENGTH
+    term_end_idx = econ.current_quarter
+    term_start_idx = max(0, term_end_idx - TERM_LENGTH)
 
     infl_term = econ.variables.get_history("inflation_rate")[term_start_idx:term_end_idx]
     unemp_term = econ.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx]
     real_term = econ.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx]
 
-    term_events = [e["name"] for e in st.session_state.news_log if e.get("in_term_quarter", 0) > 0 and e["in_term_quarter"] <= TERM_LENGTH]
+    term_events = [
+        e["name"]
+        for e in st.session_state.news_log
+        if e.get("in_term_quarter", 0) > 0
+        and e["in_term_quarter"] <= TERM_LENGTH
+        and _event_has_economic_impact(econ, e.get("name", ""))
+    ]
 
     end_ctx = EndGameContext(
         mandate=st.session_state.mandate,
@@ -221,6 +242,7 @@ def _render_end_dialog() -> None:
         if c1.button("Continue Playing", width="stretch"):
             st.session_state.game_over = False
             st.session_state.show_end_dialog = False
+            st.session_state.in_term_quarter = 1
             st.rerun()
         if c2.button("Retire", width="stretch"):
             st.session_state.show_end_dialog = False

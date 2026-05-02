@@ -45,6 +45,17 @@ def classify_public_view(
     return "Balanced", "Economic historians view you as steady under pressure."
 
 
+
+def _join_with_and(items: Sequence[str]) -> str:
+    vals = [i for i in items if i]
+    if not vals:
+        return ""
+    if len(vals) == 1:
+        return vals[0]
+    if len(vals) == 2:
+        return f"{vals[0]} and {vals[1]}"
+    return f"{', '.join(vals[:-1])}, and {vals[-1]}"
+
 def build_end_of_term_message(ctx: EndGameContext) -> str:
     infl = list(ctx.inflation_history)
     unemp = list(ctx.unemployment_history)
@@ -81,7 +92,7 @@ def build_end_of_term_message(ctx: EndGameContext) -> str:
     mixed = (not success) and improved_infl and improved_unemp and (half_close_infl or half_close_unemp)
     label, reput = classify_public_view(infl[-20:], unemp[-20:], list(ctx.real_interest_rate_history)[-20:])
     term_events = getattr(ctx, "term_event_names", ())
-    event_ref = ", ".join(term_events) if term_events else "a volatile policy cycle"
+    event_ref = _join_with_and(term_events) if term_events else "a volatile policy cycle"
 
     if success:
         target_msg = "Your mandate targets were met on average."
