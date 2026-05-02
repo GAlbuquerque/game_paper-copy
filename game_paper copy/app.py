@@ -10,7 +10,7 @@ from endgame_logic import EndGameContext, build_end_of_term_message, mandate_tar
 
 APP_TITLE = "Policy Interest Rate Simulator"
 PLAYER_START_TURN = 40
-OFFSET = 10
+OFFSET = 0
 TERM_LENGTH = 16
 SCENARIOS = ["Random", "Stable Economy", "Stagflation", "High Inflation", "Depression"]
 MANDATES = {
@@ -230,7 +230,7 @@ def _render_end_dialog() -> None:
 
 
 def _render_start_page() -> None:
-    st.title(APP_TITLE)
+  #  st.title(APP_TITLE)
     st.subheader("Start Menu")
     difficulty = st.radio("Difficulty", ["principles", "senior", "central_banker"], index=2, key="start_difficulty")
     scenario_name = st.radio("Scenario", SCENARIOS, index=0, key="start_scenario")
@@ -242,7 +242,7 @@ def _render_start_page() -> None:
 
 def main() -> None:
     st.set_page_config(page_title=APP_TITLE, layout="wide")
-    st.markdown("""<style>.block-container {padding-top: 2rem;}</style>""", unsafe_allow_html=True)
+    st.markdown("""<style>.block-container {padding-top: 3rem;}</style>""", unsafe_allow_html=True)
     st.title(APP_TITLE)
     if "game_started" not in st.session_state:
         st.session_state.game_started = False
@@ -262,15 +262,15 @@ def main() -> None:
 
     with outer_left:
         st.markdown("### News Feed")
-        news_container = st.container(height=620, border=True)
+        news_container = st.container(height=686, border=True)
         with news_container:
             if st.session_state.news_log:
-                for idx, item in enumerate(list(reversed(st.session_state.news_log))[:6]):
+                for idx, item in enumerate(list(reversed(st.session_state.news_log))):
                     color = "red" if idx == 0 and st.session_state.latest_fired else "inherit"
                     label = f"Q{item['quarter']}: {item['name']}"
                     st.markdown(f"<div style='color:{color};font-weight:600'>{label}</div>", unsafe_allow_html=True)
                     if item.get("detail"):
-                        with st.expander(f"▶ Details for {label}", expanded=False):
+                        with st.expander(f"▶ Details", expanded=False):
                             st.write(item["detail"])
             else:
                 st.write("No events yet.")
@@ -291,12 +291,12 @@ def main() -> None:
         chart = _plot_histories(econ, st.session_state.graph_window_mode, st.session_state.graph_split_mode, st.session_state.show_targets_on_graph, st.session_state.mandate, st.session_state.dual_unemployment_target, st.session_state.latest_fired)
         st.altair_chart(chart, width="stretch")
 
-        st.markdown("### Policy action")
+        st.markdown("##### New Interest Rate")
         if "rate_text" not in st.session_state:
             st.session_state.rate_text = f"{state['interest_rate']:.2f}"
 
         with st.form("policy_form", clear_on_submit=False):
-            user_rate_text = st.text_input("Enter New Interest Rate", value=st.session_state.rate_text)
+            user_rate_text = st.text_input("", value=st.session_state.rate_text)
             submitted = st.form_submit_button("Next", type="primary", width="stretch", disabled=st.session_state.game_over)
 
         if submitted:
