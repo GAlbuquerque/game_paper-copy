@@ -147,11 +147,11 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
         ).encode(x="Quarter:Q", y="Value:Q", text="Label:N")
 
     if split_mode:
-        left_chart = alt.layer(base.transform_filter("datum.Panel == 'left'"), player_line, *target_layers_left).properties(height=320, width=360)
+        left_chart = alt.layer(base.transform_filter("datum.Panel == 'left'"), player_line, *target_layers_left).properties(height=220)
         right_layers = [base.transform_filter("datum.Panel == 'right'"), player_line, *target_layers_right]
         if news_layer is not None:
             right_layers.append(news_layer)
-        right_chart = alt.layer(*right_layers).properties(height=320, width=360)
+        right_chart = alt.layer(*right_layers).properties(height=220)
         return alt.hconcat(left_chart, right_chart).resolve_scale(color='shared')
 
     layers = [base, player_line, *target_layers_left, *target_layers_right]
