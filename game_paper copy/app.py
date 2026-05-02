@@ -311,20 +311,22 @@ def main() -> None:
             c3.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
 
         st.markdown("### Economic Graphs")
-        g1, g2, g3, g4 = st.columns(4)
-        st.session_state.graph_window_mode = "past20" if g1.toggle("Past 20 turns", value=(st.session_state.graph_window_mode == "past20")) else "full"
-        st.session_state.graph_split_mode = g2.toggle("Split charts", value=st.session_state.graph_split_mode)
-        st.session_state.show_targets_on_graph = g3.toggle("Show targets", value=st.session_state.show_targets_on_graph)
+        graph_container = st.container(height=560, border=True)
+        with graph_container:
+            g1, g2, g3, g4 = st.columns(4)
+            st.session_state.graph_window_mode = "past20" if g1.toggle("Past 20 turns", value=(st.session_state.graph_window_mode == "past20")) else "full"
+            st.session_state.graph_split_mode = g2.toggle("Split charts", value=st.session_state.graph_split_mode)
+            st.session_state.show_targets_on_graph = g3.toggle("Show targets", value=st.session_state.show_targets_on_graph)
 
-        chart = _plot_histories(econ, st.session_state.graph_window_mode, st.session_state.graph_split_mode, st.session_state.show_targets_on_graph, st.session_state.mandate, st.session_state.dual_unemployment_target, st.session_state.latest_fired)
-        #with g4:
-         #   try:
-          #      chart_png = _chart_png_bytes(chart)
-           #     st.download_button("Download graph (PNG)", data=chart_png, file_name="economic_graph.png", mime="image/png", width="stretch")
-            #except Exception:
-             #   chart_html = chart.to_html().encode("utf-8")
-              #  st.download_button("Download graph (HTML)", data=chart_html, file_name="economic_graph.html", mime="text/html", width="stretch")
-        st.altair_chart(chart, width="stretch")
+            chart = _plot_histories(econ, st.session_state.graph_window_mode, st.session_state.graph_split_mode, st.session_state.show_targets_on_graph, st.session_state.mandate, st.session_state.dual_unemployment_target, st.session_state.latest_fired)
+            #with g4:
+             #   try:
+              #      chart_png = _chart_png_bytes(chart)
+               #     st.download_button("Download graph (PNG)", data=chart_png, file_name="economic_graph.png", mime="image/png", width="stretch")
+                #except Exception:
+                 #   chart_html = chart.to_html().encode("utf-8")
+                  #  st.download_button("Download graph (HTML)", data=chart_html, file_name="economic_graph.html", mime="text/html", width="stretch")
+            st.altair_chart(chart, width="stretch")
 
         st.markdown("##### New Interest Rate")
         if "rate_text" not in st.session_state:
