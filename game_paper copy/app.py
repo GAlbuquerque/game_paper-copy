@@ -146,7 +146,7 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     rate = interest_rate_history[start_idx:]
 
     if split_mode:
-        fig, axes = plt.subplots(2, 1, figsize=(8.8, 4.6), sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(6, 4), dpi=80, sharex=True)
         axes[0].plot(x, infl, color="red", label="Inflation")
         axes[0].plot(x, rate, color="green", linestyle="--", label="Interest Rate")
         axes[1].plot(x, unemp, color="blue", label="Unemployment")
@@ -168,7 +168,7 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
             if t["unemployment"] is not None:
                 axes[1].axhline(t["unemployment"], color="blue", linestyle=':', alpha=0.6)
     else:
-        fig, ax = plt.subplots(figsize=(8.8, 3.6))
+        fig, ax = plt.subplots(figsize=(6, 4), dpi=80)
         ax.plot(x, infl, label="Inflation", color="red")
         ax.plot(x, unemp, label="Unemployment", color="blue")
         ax.plot(x, rate, label="Interest Rate", color="green", linestyle="--")
@@ -249,7 +249,7 @@ def _next_quarter(user_rate: float) -> None:
 
 def _figure_png_bytes(fig) -> bytes:
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=10, bbox_inches="tight")
     buf.seek(0)
     return buf.getvalue()
 
@@ -421,17 +421,17 @@ def main() -> None:
 
     _render_end_dialog()
 
-    with st.expander("Game menu", expanded=False):
-        g1, g2, g3, g4 = st.columns([1,1,1,1])
-        difficulty = g1.radio("Difficulty", ["principles", "senior", "central_banker"], index=2)
-        scenario_name = g2.radio("Scenario", SCENARIOS, index=0)
-        mandate_label = g3.radio("Mandate", list(MANDATES.keys()), index=0)
-        if g4.button("Back to Start Menu", use_container_width=True):
-            st.session_state.game_started = False
-            st.rerun()
-        if g4.button("Start New Game", use_container_width=True):
-            _new_game(difficulty, scenario_name, MANDATES[mandate_label])
-            st.rerun()
+ #   with st.expander("Game menu", expanded=False):
+  #      g1, g2, g3, g4 = st.columns([1,1,1,1])
+   #     difficulty = g1.radio("Difficulty", ["principles", "senior", "central_banker"], index=2)
+    #    scenario_name = g2.radio("Scenario", SCENARIOS, index=0)
+     #   mandate_label = g3.radio("Mandate", list(MANDATES.keys()), index=0)
+      #  if g4.button("Back to Start Menu", use_container_width=True):
+       #     st.session_state.game_started = False
+        #    st.rerun()
+       # if g4.button("Start New Game", use_container_width=True):
+        #    _new_game(difficulty, scenario_name, MANDATES[mandate_label])
+         #   st.rerun()
 
     econ = st.session_state.economy
     state = _state_dict(econ)
