@@ -158,6 +158,21 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     return chart
 
 
+
+def _event_has_economic_impact(econ: Economy, event_name: str) -> bool:
+    if not event_name:
+        return False
+    event = next((e for e in econ.events if e.name == event_name), None)
+    if event is None:
+        return False
+    for values in event.effects_schedule.values():
+        if isinstance(values, list):
+            if any(abs(v) > 1e-12 for v in values):
+                return True
+        elif abs(values) > 1e-12:
+            return True
+    return False
+
 def _finish_game_if_needed() -> None:
     if st.session_state.in_term_quarter <= TERM_LENGTH:
         return
@@ -171,7 +186,13 @@ def _finish_game_if_needed() -> None:
     unemp_term = econ.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx]
     real_term = econ.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx]
 
-    term_events = [e["name"] for e in st.session_state.news_log if e.get("in_term_quarter", 0) > 0 and e["in_term_quarter"] <= TERM_LENGTH]
+    term_events = [
+        e["name"]
+        for e in st.session_state.news_log
+        if e.get("in_term_quarter", 0) > 0
+        and e["in_term_quarter"] <= TERM_LENGTH
+        and _event_has_economic_impact(econ, e.get("name", ""))
+    ]
 
     end_ctx = EndGameContext(
         mandate=st.session_state.mandate,
