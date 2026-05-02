@@ -4,8 +4,8 @@
 Faithful browser-oriented UX layer that reuses the existing simulation engine.
 """
 
-import io
-import matplotlib.pyplot as plt
+import altair as alt
+import pandas as pd
 import streamlit as st
 
 from economy import Economy
@@ -135,56 +135,57 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
     unemployment_history = econ.variables.get_history("unemployment_rate")
     interest_rate_history = econ.variables.get_history("interest_rate")
 
-    if window_mode == "past20":
-        start_idx = max(0, len(inflation_history) - 20)
-    else:
-        start_idx = 0
+    start_idx = max(0, len(inflation_history) - 20) if window_mode == "past20" else 0
+    quarters = list(range(start_idx, len(inflation_history)))
 
-    x = list(range(start_idx, len(inflation_history)))
-    infl = inflation_history[start_idx:]
-    unemp = unemployment_history[start_idx:]
-    rate = interest_rate_history[start_idx:]
+    rows = []
+    for i, q in enumerate(quarters):
+        rows.append({"Quarter": q, "Metric": "Inflation", "Value": inflation_history[start_idx + i], "Panel": "Top" if split_mode else "Combined"})
+        rows.append({"Quarter": q, "Metric": "Interest Rate", "Value": interest_rate_history[start_idx + i], "Panel": "Top" if split_mode else "Combined"})
+        rows.append({"Quarter": q, "Metric": "Unemployment", "Value": unemployment_history[start_idx + i], "Panel": "Bottom" if split_mode else "Combined"})
+
+    if econ.difficulty == "principles":
+        natural = econ.variables.get_history("natural_unemployment_rate")[start_idx:]
+        for i, q in enumerate(quarters):
+            rows.append({"Quarter": q, "Metric": "Natural unemployment", "Value": natural[i], "Panel": "Bottom" if split_mode else "Combined"})
+
+    palette = {
+        "Inflation": "red",
+        "Unemployment": "blue",
+        "Interest Rate": "green",
+        "Natural unemployment": "black",
+    }
+    df = pd.DataFrame(rows)
+
+    base = alt.Chart(df).mark_line().encode(
+        x=alt.X("Quarter:Q", title="Quarter"),
+        y=alt.Y("Value:Q", title="Percent"),
+        color=alt.Color("Metric:N", scale=alt.Scale(domain=list(palette.keys()), range=list(palette.values()))),
+        strokeDash=alt.condition(alt.datum.Metric == "Interest Rate", alt.value([6, 4]), alt.value([1, 0])),
+    )
+
+    player_line = alt.Chart(pd.DataFrame([{"Quarter": PLAYER_START_TURN + OFFSET}])).mark_rule(color="black", strokeDash=[4, 4]).encode(x="Quarter:Q")
+
+    layers = [base, player_line]
+    if show_targets:
+        t = mandate_targets(mandate, dual_unemployment_target)
+        targets = [{"Value": t["inflation"], "Color": "red"}]
+        if t["unemployment"] is not None:
+            targets.append({"Value": t["unemployment"], "Color": "blue"})
+        target_chart = alt.Chart(pd.DataFrame(targets)).mark_rule(strokeDash=[2, 2], opacity=0.6).encode(
+            y="Value:Q",
+            color=alt.Color("Color:N", scale=None),
+        )
+        layers.append(target_chart)
+
+    chart = alt.layer(*layers).properties(height=320)
 
     if split_mode:
-        fig, axes = plt.subplots(2, 1, figsize=(12, 4), dpi=80, sharex=True)
-        axes[0].plot(x, infl, color="red", label="Inflation")
-        axes[0].plot(x, rate, color="green", linestyle="--", label="Interest Rate")
-        axes[1].plot(x, unemp, color="blue", label="Unemployment")
-        natural = econ.variables.get_history("natural_unemployment_rate")[start_idx:]
-        if econ.difficulty == "principles":
-            axes[1].plot(x, natural, color="black", linestyle=":", label="Natural unemployment")
+        top = chart.transform_filter("datum.Panel == 'Top'")
+        bottom = chart.transform_filter("datum.Panel == 'Bottom'")
+        return alt.vconcat(top, bottom).resolve_scale(color='shared')
 
-        for ax in axes:
-            ax.axvline(x=PLAYER_START_TURN + OFFSET, color="black", linestyle=":")
-            ax.grid(alpha=0.2)
-            ax.legend(loc="best")
-
-        axes[1].set_xlabel("Quarter")
-        axes[0].set_ylabel("Percent")
-        axes[1].set_ylabel("Percent")
-        if show_targets:
-            t = mandate_targets(mandate, dual_unemployment_target)
-            axes[0].axhline(t["inflation"], color="red", linestyle=':', alpha=0.6)
-            if t["unemployment"] is not None:
-                axes[1].axhline(t["unemployment"], color="blue", linestyle=':', alpha=0.6)
-    else:
-        fig, ax = plt.subplots(figsize=(12, 4), dpi=80)
-        ax.plot(x, infl, label="Inflation", color="red")
-        ax.plot(x, unemp, label="Unemployment", color="blue")
-        ax.plot(x, rate, label="Interest Rate", color="green", linestyle="--")
-        ax.axvline(x=PLAYER_START_TURN + OFFSET, color="black", linestyle=":", label="Player start")
-        ax.set_xlabel("Quarter")
-        ax.set_ylabel("Percent")
-        ax.legend(loc="best")
-        ax.grid(alpha=0.2)
-        if show_targets:
-            t = mandate_targets(mandate, dual_unemployment_target)
-            ax.axhline(t["inflation"], color="red", linestyle=':', alpha=0.6, label="Inflation target")
-            if t["unemployment"] is not None:
-                ax.axhline(t["unemployment"], color="blue", linestyle=':', alpha=0.6, label="Unemployment target")
-    fig.tight_layout()
-    return fig
-
+    return chart
 
 def _finish_game_if_needed() -> None:
     if st.session_state.player_turn <= TERM_LENGTH:
@@ -247,11 +248,6 @@ def _next_quarter(user_rate: float) -> None:
 
 
 
-def _figure_png_bytes(fig) -> bytes:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=10, bbox_inches="tight")
-    buf.seek(0)
-    return buf.getvalue()
 
 
 def _render_end_dialog() -> None:
@@ -368,11 +364,6 @@ def _next_quarter(user_rate: float) -> None:
 
 
 
-def _figure_png_bytes(fig) -> bytes:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
-    buf.seek(0)
-    return buf.getvalue()
 
 
 def _render_end_dialog() -> None:
@@ -470,7 +461,7 @@ def main() -> None:
         st.session_state.graph_split_mode = g2.toggle("Split charts", value=st.session_state.graph_split_mode)
         st.session_state.show_targets_on_graph = g3.toggle("Show targets", value=st.session_state.show_targets_on_graph)
 
-        fig = _plot_histories(
+        chart = _plot_histories(
             econ,
             st.session_state.graph_window_mode,
             st.session_state.graph_split_mode,
@@ -478,8 +469,7 @@ def main() -> None:
             st.session_state.mandate,
             st.session_state.dual_unemployment_target,
         )
-        st.pyplot(fig, clear_figure=False)
-        st.download_button("Download graph (PNG)", data=_figure_png_bytes(fig), file_name="pirs_graph.png", mime="image/png")
+        st.altair_chart(chart, use_container_width=True)
 
     with right_col:
         st.markdown("### Latest event")

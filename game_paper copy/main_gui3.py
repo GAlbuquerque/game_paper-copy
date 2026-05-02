@@ -575,7 +575,7 @@ class EconomicGameApp:
             ax_bottom.set_ylim(bottom=0)
             ax_bottom.legend(fontsize=8)
             ax_bottom.grid(True, which="major", linewidth=0.8, alpha=0.4)
-            if self.graph_window_mode == "recent":
+            if self.graph_window_mode == "past20":
                 ax_bottom.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             self.ax = ax_top
@@ -601,7 +601,7 @@ class EconomicGameApp:
             self.ax.minorticks_on()
             self.ax.grid(True, which="major", linewidth=0.8, alpha=0.4)
             self.ax.grid(True, which="minor", linewidth=0.5, alpha=0.2)
-            if self.graph_window_mode == "recent":
+            if self.graph_window_mode == "past20":
                 self.ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             self._draw_event_banner()
 
@@ -609,7 +609,7 @@ class EconomicGameApp:
         self.canvas.draw()
 
     def _visible_histories(self):
-        window = 20 if self.graph_window_mode == "recent" else None
+        window = 20 if self.graph_window_mode == "past20" else None
 
         inflation = self.economy.variables.get_history("inflation_rate")[offset:]
         unemployment = self.economy.variables.get_history("unemployment_rate")[offset:]
@@ -652,9 +652,9 @@ class EconomicGameApp:
             )
 
     def toggle_graph_window_mode(self):
-        self.graph_window_mode = "recent" if self.graph_window_mode == "full" else "full"
+        self.graph_window_mode = "past20" if self.graph_window_mode == "full" else "full"
         self.view_toggle_button.config(
-            text="History: Recent" if self.graph_window_mode == "recent" else "History: Full"
+            text="History: Past 20" if self.graph_window_mode == "past20" else "History: Full"
         )
         self.plot_graphs()
 
