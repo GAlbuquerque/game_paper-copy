@@ -458,6 +458,9 @@ class Economy:
                 return None
         fired = []
         for event in self.events:
+            allowed = getattr(event, "allowed_difficulties", None)
+            if allowed is not None and self.difficulty not in allowed:
+                continue
             get_probability = getattr(event, "get_probability", None)
             probability = (
                 float(get_probability(history))

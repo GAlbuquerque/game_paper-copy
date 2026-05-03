@@ -31,6 +31,7 @@ class GameEvent:
     description: str
     prob_terms: List[ProbTerm]                   # a + b + c + ...
     effects_schedule: Dict[str, List[float]]     # explicit 8-slot schedules per indicator
+    allowed_difficulties: Optional[List[str]] = None
     is_active: bool = False
 
     def get_probability(self, history: History) -> float:
@@ -427,12 +428,58 @@ def initialize_events() -> List[GameEvent]:
         name="Research on Policy Lags",
         description=("New research suggests real interest rate changes take about 1 year to impact employment "
                      "and about 2 years to impact inflation."),
+        allowed_difficulties=["senior", "central_banker"],
         prob_terms=[
             ProbTerm("trigger_42_44",
     lambda h: (1 if 41 <= h.get("quarter_user", 1) <= 44 else 0.0)),
             ProbTerm("c_recent_block",
                      lambda h: (-1 if recent_event_count(h, "Research on Policy Lags", 8) > 0 else 0.0)),
         ],
+        effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
+            ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
+    ))
+
+    # --- Lesson Event Stubs (disabled for now) ---
+    ev.append(GameEvent(
+        name="Explainer: Unemployment and Inflation",
+        description=("Lesson: Unemployment measures the share of people actively looking for work who cannot find jobs. "
+                     "When unemployment is very low, wages and demand can rise faster, adding inflation pressure. "
+                     "When it is high, inflation usually cools because spending power weakens."),
+        prob_terms=[ProbTerm("disabled_for_now", lambda h: -1.0)],
+        effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
+            ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
+    ))
+    ev.append(GameEvent(
+        name="Explainer: Real Interest Rates and Employment",
+        description=("Lesson: The real interest rate is approximately the policy rate minus inflation. "
+                     "Higher real rates make borrowing costlier and tend to reduce aggregate demand, which can raise unemployment. "
+                     "Lower real rates usually support demand and employment, with effects that arrive gradually."),
+        prob_terms=[ProbTerm("disabled_for_now", lambda h: -1.0)],
+        effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
+            ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
+    ))
+    ev.append(GameEvent(
+        name="Explainer: Trust and Expectations Anchoring",
+        description=("Lesson: If people trust the central bank, inflation expectations stay anchored near target. "
+                     "Anchored expectations reduce self-fulfilling inflation spirals and make policy less costly for jobs."),
+        prob_terms=[ProbTerm("disabled_for_now", lambda h: -1.0)],
+        effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
+            ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
+    ))
+    ev.append(GameEvent(
+        name="Explainer: Natural Unemployment Rate",
+        description=("Lesson: The natural unemployment rate is the level consistent with stable inflation in the medium run, "
+                     "reflecting frictions like job search and skill mismatch. "
+                     "Policy can move unemployment around it temporarily, but structural reforms influence it more durably."),
+        prob_terms=[ProbTerm("disabled_for_now", lambda h: -1.0)],
+        effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
+            ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
+    ))
+    ev.append(GameEvent(
+        name="Explainer: Nominal vs Real Variables",
+        description=("Lesson: Nominal variables are measured in current prices, while real variables adjust for inflation. "
+                     "Policy decisions based only on nominal rates can be misleading when inflation shifts quickly."),
+        prob_terms=[ProbTerm("disabled_for_now", lambda h: -1.0)],
         effects_schedule={k:[0,0,0,0,0,0,0,0] for k in
             ["inflation","interest_rate","real_rate_eq","unemployment","natural_unemployment"]},
     ))
