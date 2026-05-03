@@ -381,11 +381,17 @@ def _render_end_dialog() -> None:
 
 
 def _render_start_page() -> None:
-    st.subheader("Start Menu")
     left_col, right_col = st.columns([1.0, 1.0]) if SHOW_START_EXPLAINERS == 1 else (st.container(), None)
 
     with left_col:
-        difficulty = st.radio("Difficulty", ["principles", "senior", "central_banker"], index=2, key="start_difficulty")
+        st.markdown("### Start Menu")
+        difficulty_options = {
+            "Principles": "principles",
+            "Senior": "senior",
+            "Central Bank Governor": "central_banker",
+        }
+        difficulty_label = st.radio("Difficulty", list(difficulty_options.keys()), index=2, key="start_difficulty")
+        difficulty = difficulty_options[difficulty_label]
         scenario_name = st.radio("Scenario", SCENARIOS, index=0, key="start_scenario")
         mandate_label = st.radio("Mandate", list(MANDATES.keys()), index=0, key="start_mandate")
 
