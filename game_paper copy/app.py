@@ -127,7 +127,7 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
                 _force_event_by_name(econ, scenario_name, "Major Financial Crisis", news_log)
             if scenario_name == "Stagflation":
                 _force_stagflation_supply_shock(econ, scenario_name, news_log)
-        if scenario_name == "High Inflation" and idx == total_turns - 1:
+        if scenario_name == "High Inflation":
             if not _has_past_event(econ, "Spending Wave"):
                 _force_event_by_name(econ, scenario_name, "Spending Wave", news_log)
 
