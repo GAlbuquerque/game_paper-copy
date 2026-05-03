@@ -6,13 +6,14 @@ import io
 import altair as alt
 import pandas as pd
 import streamlit as st
+from collections import defaultdict
 
 from economy import Economy
 from endgame_logic import EndGameContext, build_end_of_term_message, mandate_targets
 
 APP_TITLE = "Policy Interest Rate Simulator"
 PLAYER_START_TURN = 40
-OFFSET = 0
+OFFSET = 10
 TERM_LENGTH = 16
 SCENARIOS = ["Random", "Stable Economy", "Stagflation", "High Inflation", "Depression"]
 MANDATES = {
@@ -51,6 +52,51 @@ def _apply_bootstrap_persona(econ: Economy, scenario_name: str) -> None:
         econ.cb_persona = "hawk"
 
 
+def _has_past_event(econ: Economy, event_name: str) -> bool:
+    return any(event_name in quarter_events for quarter_events in econ.past_events)
+
+
+def _force_event_by_name(econ: Economy, scenario_name: str, event_name: str, news_log: list[dict]) -> None:
+    event = next((e for e in econ.events if e.name == event_name), None)
+    if event is None:
+        return
+    econ.enqueue_event(event)
+    econ.apply_event_effects(dict(econ.effect_queue[0]))
+    econ.effect_queue[0] = defaultdict(float)
+    econ.past_events.append([event.name])
+    econ.past_events = econ.past_events[-8:]
+    if econ.current_quarter > OFFSET:
+        news_log.append({
+            "quarter": econ.current_quarter - OFFSET,
+            "in_term_quarter": 0,
+            "name": event.name,
+            "detail": "",
+            "fired_this_turn": False,
+        })
+
+
+def _force_stagflation_supply_shock(econ: Economy, scenario_name: str, news_log: list[dict]) -> None:
+    history = econ._build_history_snapshot()
+    weighted_candidates = []
+    for event_name in ["Global Supply Shock", "Pandemic Outbreak", "Natural Disaster"]:
+        event = next((e for e in econ.events if e.name == event_name), None)
+        if event is None:
+            continue
+        weight = max(0.0, float(event.get_probability(history)))
+        weighted_candidates.append((event.name, weight))
+    if not weighted_candidates:
+        return
+    total_weight = sum(weight for _, weight in weighted_candidates)
+    if total_weight <= 0:
+        selected_name = weighted_candidates[0][0]
+    else:
+        import random
+        names = [name for name, _ in weighted_candidates]
+        weights = [weight for _, weight in weighted_candidates]
+        selected_name = random.choices(names, weights=weights, k=1)[0]
+    _force_event_by_name(econ, scenario_name, selected_name, news_log)
+
+
 def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
     econ = Economy(difficulty="central_banker", scenario=_sample_scenario(scenario_name))
     econ.offset = OFFSET
@@ -60,12 +106,34 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
     news_log = []
     total_turns = PLAYER_START_TURN + OFFSET
     _apply_bootstrap_persona(econ, scenario_name)
-    for _ in range(total_turns):
+    hyperinflation_prob_boosted = False
+    for idx in range(total_turns):
+        if scenario_name == "Stable Economy" and idx >= total_turns - 10:
+            econ.last_event_quarter = econ.current_quarter
+        if scenario_name == "High Inflation" and not hyperinflation_prob_boosted:
+            for event in econ.events:
+                if event.name == "Spending Wave":
+                    for term in event.prob_terms:
+                        if term.label == "a_base":
+                            original_fn = term.fn
+                            term.fn = lambda h, _f=original_fn: min(1.0, 10 * float(_f(h)))
+                            hyperinflation_prob_boosted = True
+
         econ.adjust_interest_rate_with_taylor()
         result = econ.simulate_quarter()
-        if result.get("event_name") and econ.current_quarter > OFFSET:
+        three_before_player = total_turns - 3
+        if idx == three_before_player:
+            if scenario_name == "Depression":
+                _force_event_by_name(econ, scenario_name, "Major Financial Crisis", news_log)
+            if scenario_name == "Stagflation":
+                _force_stagflation_supply_shock(econ, scenario_name, news_log)
+        if scenario_name == "High Inflation" and idx == total_turns - 1:
+            if not _has_past_event(econ, "Spending Wave"):
+                _force_event_by_name(econ, scenario_name, "Spending Wave", news_log)
+
+        if result.get("event") and econ.current_quarter > OFFSET:
             news_log.append({
-                "quarter": econ.current_quarter,
+                "quarter": econ.current_quarter - OFFSET,
                 "in_term_quarter": 0,
                 "name": result["event_name"],
                 "detail": result.get("event") or "",
@@ -129,7 +197,7 @@ def _plot_histories(econ: Economy, window_mode: str, split_mode: bool, show_targ
         strokeDash=alt.condition(alt.datum.Metric == "Interest Rate", alt.value([6, 4]), alt.value([1, 0])),
     )
 
-    player_line = alt.Chart(pd.DataFrame([{"Quarter": PLAYER_START_TURN + OFFSET}])).mark_rule(color="black", strokeDash=[4, 4]).encode(x="Quarter:Q")
+    player_line = alt.Chart(pd.DataFrame([{"Quarter": PLAYER_START_TURN}])).mark_rule(color="black", strokeDash=[4, 4]).encode(x="Quarter:Q")
 
     target_layers_left, target_layers_right = [], []
     if show_targets:
@@ -221,7 +289,7 @@ def _next_quarter(user_rate: float) -> None:
     st.session_state.latest_fired = bool(result.get("event_name"))
     if st.session_state.latest_fired:
         st.session_state.news_log.append({
-            "quarter": econ.current_quarter,
+            "quarter": econ.current_quarter - OFFSET,
             "in_term_quarter": st.session_state.in_term_quarter,
             "name": result["event_name"],
             "detail": result.get("event") or "",
