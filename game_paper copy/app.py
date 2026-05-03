@@ -191,7 +191,7 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
 
         if result.get("event") and econ.current_quarter > OFFSET:
             news_log.append({
-                "quarter": max(0, econ.current_quarter - 1),
+                "quarter": max(1, econ.current_quarter - OFFSET),
                 "in_term_quarter": 0,
                 "name": result["event_name"],
                 "detail": result.get("event") or "",
@@ -347,7 +347,7 @@ def _next_quarter(user_rate: float) -> None:
     st.session_state.latest_fired = bool(result.get("event_name"))
     if st.session_state.latest_fired:
         st.session_state.news_log.append({
-            "quarter": max(0, econ.current_quarter - 1),
+            "quarter": max(1, econ.current_quarter - OFFSET),
             "in_term_quarter": st.session_state.in_term_quarter,
             "name": result["event_name"],
             "detail": result.get("event") or "",
