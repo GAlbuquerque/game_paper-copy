@@ -20,6 +20,66 @@ MANDATES = {
     "Inflation Target": "inflation_target",
     "Dual Mandate": "dual_mandate",
 }
+SHOW_START_EXPLAINERS = 1
+
+DIFFICULTY_EXPLAINERS = {
+    "principles": (
+        "Principles mode simplifies the economy so cause-and-effect is easier to read each turn. "
+        "You will see cleaner responses to rate changes and fewer noisy interactions across indicators. "
+        "This is the best setting for learning policy basics before moving to more realistic turbulence."
+    ),
+    "senior": (
+        "Senior mode adds more realistic cross-currents while keeping behavior fairly interpretable. "
+        "Your rate decisions still matter clearly, but shocks and timing create tougher tradeoffs quarter to quarter. "
+        "Choose this if you want a balanced challenge with manageable complexity."
+    ),
+    "central_banker": (
+        "Central Banker mode is the most demanding and most realistic version of the simulator. "
+        "Events, lags, and interacting forces can push inflation and unemployment in conflicting directions at the same time. "
+        "Pick this when you want uncertainty, harder judgment calls, and full-pressure policy play."
+    ),
+}
+
+SCENARIO_EXPLAINERS = {
+    "Random": (
+        "Random starts from a neutral setup and lets the simulation draw a broad mix of possible developments. "
+        "You must diagnose conditions as they evolve instead of planning around a known macro story. "
+        "This is ideal if you want replayability and surprise from run to run."
+    ),
+    "Stable Economy": (
+        "Stable Economy begins with generally calm conditions and fewer immediate disruptions. "
+        "The challenge is to avoid overreacting and to keep inflation and unemployment anchored over time. "
+        "It is a good scenario for practicing steady, disciplined policy adjustments."
+    ),
+    "Stagflation": (
+        "Stagflation places you in an environment where inflation pressure and labor weakness can appear together. "
+        "Rate increases may help prices while worsening employment, so tradeoffs become sharper than usual. "
+        "Use this scenario to practice policy choices under conflicting objectives."
+    ),
+    "High Inflation": (
+        "High Inflation starts with elevated price growth and a policy setting that requires firm stabilization. "
+        "You will likely need a credible path to cool inflation without triggering unnecessary economic damage. "
+        "This scenario rewards consistency, patience, and clear anti-inflation strategy."
+    ),
+    "Depression": (
+        "Depression begins in severe weakness, where demand and confidence are already under strain. "
+        "Your main task is to support recovery while preventing secondary instability from compounding the downturn. "
+        "Choose this if you want to focus on stabilization in a deeply stressed economy."
+    ),
+}
+
+MANDATE_EXPLAINERS = {
+    "Inflation Target": (
+        "Inflation Target focuses your score on price stability as the primary mission. "
+        "You can tolerate more labor-market variation if that helps return inflation toward target over the term. "
+        "Select this mandate when you want a clearer, single-priority policy objective."
+    ),
+    "Dual Mandate": (
+        "Dual Mandate asks you to balance inflation control with employment outcomes at the same time. "
+        "Policy moves that fix one side may hurt the other, so pacing and sequencing become central to success. "
+        "Choose this if you want a broader objective set and more nuanced end-of-term tradeoff management."
+    ),
+}
 
 
 def _sample_scenario(_: str):
@@ -323,11 +383,21 @@ def _render_end_dialog() -> None:
 
 
 def _render_start_page() -> None:
-  #  st.title(APP_TITLE)
     st.subheader("Start Menu")
-    difficulty = st.radio("Difficulty", ["principles", "senior", "central_banker"], index=2, key="start_difficulty")
-    scenario_name = st.radio("Scenario", SCENARIOS, index=0, key="start_scenario")
-    mandate_label = st.radio("Mandate", list(MANDATES.keys()), index=0, key="start_mandate")
+    left_col, right_col = st.columns([1.0, 1.0]) if SHOW_START_EXPLAINERS == 1 else (st.container(), None)
+
+    with left_col:
+        difficulty = st.radio("Difficulty", ["principles", "senior", "central_banker"], index=2, key="start_difficulty")
+        scenario_name = st.radio("Scenario", SCENARIOS, index=0, key="start_scenario")
+        mandate_label = st.radio("Mandate", list(MANDATES.keys()), index=0, key="start_mandate")
+
+    if SHOW_START_EXPLAINERS == 1 and right_col is not None:
+        with right_col:
+            st.markdown("### Setup Explainer")
+            st.markdown(f"**Difficulty:** {DIFFICULTY_EXPLAINERS[difficulty]}")
+            st.markdown(f"**Scenario:** {SCENARIO_EXPLAINERS[scenario_name]}")
+            st.markdown(f"**Mandate:** {MANDATE_EXPLAINERS[mandate_label]}")
+
     if st.button("Start Game", type="primary"):
         _new_game(difficulty, scenario_name, MANDATES[mandate_label])
         st.rerun()
