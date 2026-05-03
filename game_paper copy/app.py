@@ -332,7 +332,7 @@ def main() -> None:
             st.session_state.rate_text = f"{state['interest_rate']:.2f}"
 
         with st.form("policy_form", clear_on_submit=False):
-            user_rate_text = st.text_input("", value=st.session_state.rate_text)
+            user_rate_text = st.text_input("New Interest Rate_invisible", value=st.session_state.rate_text, label_visibility="collapsed")
             submitted = st.form_submit_button("Next", type="primary", width="stretch", disabled=st.session_state.game_over)
 
         if submitted:
