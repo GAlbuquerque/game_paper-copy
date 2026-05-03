@@ -73,7 +73,7 @@ MANDATE_EXPLAINERS = {
     "Inflation Target": (
         "Inflation Target focuses your score on price stability as the primary mission. "
         "You can tolerate more labor-market variation if that helps return inflation toward target over time. "
-        "This framework is used in countries such as Canada and Brazil, as well as in the European Union."
+        "This framework is used in countries such as Canada and Brazil, as well as in the Euro area."
     ),
     "Dual Mandate": (
         "Dual Mandate asks you to balance inflation control with employment outcomes at the same time. "
