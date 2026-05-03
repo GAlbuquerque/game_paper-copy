@@ -90,7 +90,7 @@ class EconomicGameApp:
         # self.initial_unemployment = self.economy.indicators.unemployment_rate
         self.initial_inflation = self.economy.indicators.inflation_rate
         self.initial_unemployment = self.economy.indicators.unemployment_rate
-        self.current_term_start = PLAYER_START_TURN + 1
+        self.current_term_start = PLAYER_START_TURN + 1 + offset
         self.term_length = 16
         self.current_event_name = None
         self.end_game_window = None
