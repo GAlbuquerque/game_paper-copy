@@ -13,7 +13,7 @@ from endgame_logic import EndGameContext, build_end_of_term_message, mandate_tar
 
 APP_TITLE = "Policy Interest Rate Simulator"
 PLAYER_START_TURN = 40
-OFFSET = 10
+OFFSET = 0 # making this positive is messing with turn counter. Not worth it
 TERM_LENGTH = 16
 SCENARIOS = ["Random", "Stable Economy", "Stagflation", "High Inflation", "Depression"]
 MANDATES = {
@@ -25,17 +25,19 @@ SHOW_START_EXPLAINERS = 1
 DIFFICULTY_EXPLAINERS = {
     "principles": (
         "Principles mode simplifies the economy so cause-and-effect is easier to understand. "
-        "The effects of interest rates on employment are immediate, inflation reacts quickly to any change in unemployment, and economic shocks are very rare. "
+        "Natural rate of unemployment is known, the effects of interest rates on employment are immediate, inflation reacts quickly to any change in unemployment, and economic shocks are very rare. "
         "This mode is designed for students taking Principles of Macroeconomics or players learning the basics of monetary policy."
     ),
     "senior": (
         "Senior mode adds more realism and complexity to the economy while keeping the simulation fairly interpretable. "
         "Shocks are common and the impact of your choices is neither immediate, nor short-lived."
+        "The natural of unemployment is unknown, but you can estimate it observing the past."
         "This mode is designed for advanced university students and players with a solid understanding of Macroeconomics and Monetary Economics."
     ),
     "central_banker": (
         "Central Banker mode delivers the most realistic and demanding version of the simulator. "
         "Policy lags, economic shocks, and interacting forces can push inflation and unemployment in conflicting directions at the same time. "
+        "The natural of unemployment is unknown, but you can estimate it observing the past."
         "This mode is designed for experienced players who want uncertainty, difficult judgment calls, and full-pressure policymaking."
     ),
 }
@@ -451,7 +453,7 @@ def main() -> None:
         c2.markdown(f"**Unemployment Rate:** {state['unemployment_rate']:.2f}%")
         c3.markdown(f"**Interest Rate:** {state['interest_rate']:.2f}%")
 
-        st.markdown("### Economic Graphs")
+        st.markdown("### Time Series")
         graph_container = st.container(height=375, border=False)
         with graph_container:
             g1, g2, g3, g4 = st.columns(4)
