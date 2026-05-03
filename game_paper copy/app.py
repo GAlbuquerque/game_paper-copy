@@ -162,7 +162,7 @@ def _new_game(difficulty: str, scenario_name: str, mandate: str) -> None:
     _apply_scenario_initial_conditions(econ, scenario_name)
 
     news_log = []
-    total_turns = PLAYER_START_TURN + OFFSET
+    total_turns = PLAYER_START_TURN
     _apply_bootstrap_persona(econ, scenario_name)
     hyperinflation_prob_boosted = False
     for idx in range(total_turns):

@@ -295,7 +295,7 @@ class EconomicGameApp:
         self.graph_split_mode = False
         self.show_targets_on_graph = False
         self.dual_unemployment_target = 5
-        self.current_term_start = PLAYER_START_TURN + 1 + offset
+        self.current_term_start = PLAYER_START_TURN + 1
         self.initial_inflation = self.economy.indicators.inflation_rate
         self.initial_unemployment = self.economy.indicators.unemployment_rate
         self.news_text.delete("1.0", tk.END)
@@ -327,7 +327,7 @@ class EconomicGameApp:
         self.economy.simplified_dynamics = difficulty == "principles"
 
     def _autorun_initial_history(self):
-        total_turns = PLAYER_START_TURN + offset
+        total_turns = PLAYER_START_TURN
         self._apply_bootstrap_persona()
         for idx in range(total_turns):
             self._apply_bootstrap_overrides_before_turn(idx, total_turns)
