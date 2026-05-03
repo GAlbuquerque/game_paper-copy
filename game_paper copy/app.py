@@ -70,7 +70,7 @@ def _force_event_by_name(econ: Economy, scenario_name: str, event_name: str, new
             "quarter": econ.current_quarter - OFFSET,
             "in_term_quarter": 0,
             "name": event.name,
-            "detail": "",
+            "detail": event.description or "",
             "fired_this_turn": False,
         })
 
