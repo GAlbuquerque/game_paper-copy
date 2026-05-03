@@ -23,20 +23,20 @@ MANDATES = {
 SHOW_START_EXPLAINERS = 1
 
 DIFFICULTY_EXPLAINERS = {
-    "principles": (
-        "Principles mode simplifies the economy so cause-and-effect is easier to read each turn. "
-        "You will see cleaner responses to rate changes and fewer noisy interactions across indicators. "
-        "This is the best setting for learning policy basics before moving to more realistic turbulence."
+    "Principles": (
+        "Principles mode simplifies the economy so cause-and-effect is easier to understand. "
+        "The effects of interest rates on employment are immediate, inflation reacts quickly to any change in unemployment, and economic shocks are very rare. "
+        "This mode is designed for students taking Principles of Macroeconomics or players learning the basics of monetary policy."
     ),
     "senior": (
-        "Senior mode adds more realistic cross-currents while keeping behavior fairly interpretable. "
-        "Your rate decisions still matter clearly, but shocks and timing create tougher tradeoffs quarter to quarter. "
-        "Choose this if you want a balanced challenge with manageable complexity."
+        "Senior mode adds more realism and complexity to the economy while keeping the simulation fairly interpretable. "
+        "Shocks are common and the impact of your choices is neither immediate, nor short-lived."
+        "This mode is designed for advanced university students and players with a solid understanding of Macroeconomics and Monetary Economics."
     ),
     "central_banker": (
-        "Central Banker mode is the most demanding and most realistic version of the simulator. "
-        "Events, lags, and interacting forces can push inflation and unemployment in conflicting directions at the same time. "
-        "Pick this when you want uncertainty, harder judgment calls, and full-pressure policy play."
+        "Central Banker mode delivers the most realistic and demanding version of the simulator. "
+        "Policy lags, economic shocks, and interacting forces can push inflation and unemployment in conflicting directions at the same time. "
+        "This mode is designed for experienced players who want uncertainty, difficult judgment calls, and full-pressure policymaking."
     ),
 }
 
@@ -48,7 +48,6 @@ SCENARIO_EXPLAINERS = {
     ),
     "Stable Economy": (
         "Stable Economy begins with generally calm conditions and fewer immediate disruptions. "
-        "The challenge is to avoid overreacting and to keep inflation and unemployment anchored over time. "
         "It is a good scenario for practicing steady, disciplined policy adjustments."
     ),
     "Stagflation": (
@@ -62,7 +61,7 @@ SCENARIO_EXPLAINERS = {
         "This scenario rewards consistency, patience, and clear anti-inflation strategy."
     ),
     "Depression": (
-        "Depression begins in severe weakness, where demand and confidence are already under strain. "
+        "Depression begins in severe weakness, where demand is already under strain. "
         "Your main task is to support recovery while preventing secondary instability from compounding the downturn. "
         "Choose this if you want to focus on stabilization in a deeply stressed economy."
     ),
@@ -71,16 +70,15 @@ SCENARIO_EXPLAINERS = {
 MANDATE_EXPLAINERS = {
     "Inflation Target": (
         "Inflation Target focuses your score on price stability as the primary mission. "
-        "You can tolerate more labor-market variation if that helps return inflation toward target over the term. "
-        "Select this mandate when you want a clearer, single-priority policy objective."
+        "You can tolerate more labor-market variation if that helps return inflation toward target over time. "
+        "This framework is used in countries such as Canada and Brazil, as well as in the European Union."
     ),
     "Dual Mandate": (
         "Dual Mandate asks you to balance inflation control with employment outcomes at the same time. "
-        "Policy moves that fix one side may hurt the other, so pacing and sequencing become central to success. "
-        "Choose this if you want a broader objective set and more nuanced end-of-term tradeoff management."
+        "Policy moves that improve one side of the economy may weaken the other, making pacing and sequencing central to success. "
+        "This framework is most strongly associated with countries such as the United States."
     ),
 }
-
 
 def _sample_scenario(_: str):
     return None
