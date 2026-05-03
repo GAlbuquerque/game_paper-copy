@@ -31,13 +31,13 @@ DIFFICULTY_EXPLAINERS = {
     "senior": (
         "Senior mode adds more realism and complexity to the economy while keeping the simulation fairly interpretable. "
         "Shocks are common and the impact of your choices is neither immediate, nor short-lived."
-        "The natural of unemployment is unknown, but you can estimate it observing the past."
+        "The natural rate of unemployment is unknown, but you can estimate it observing the past." 
         "This mode is designed for advanced university students and players with a solid understanding of Macroeconomics and Monetary Economics."
     ),
     "central_banker": (
         "Central Banker mode delivers the most realistic and demanding version of the simulator. "
         "Policy lags, economic shocks, and interacting forces can push inflation and unemployment in conflicting directions at the same time. "
-        "The natural of unemployment is unknown, but you can estimate it observing the past."
+        "The natural rate of unemployment is unknown, but you can estimate it observing the past. "
         "This mode is designed for experienced players who want uncertainty, difficult judgment calls, and full-pressure policymaking."
     ),
 }
@@ -45,12 +45,12 @@ DIFFICULTY_EXPLAINERS = {
 SCENARIO_EXPLAINERS = {
     "Random": (
         "Random starts from a neutral setup and lets the simulation draw a broad mix of possible developments. "
-        "You must diagnose conditions as they evolve."
+        "You must diagnose conditions as they evolve. "
         "This mode is ideal if you want replayability and surprise from run to run."
     ),
     "Stable Economy": (
         "Stable Economy begins with generally calm conditions and fewer immediate disruptions. "
-        "It is a good scenario for practicing steady, disciplined policy adjustments."
+        "It is a good scenario for practicing steady, disciplined policy adjustments. "
     ),
     "Stagflation": (
         "Stagflation places you in an environment where inflation pressure and labor weakness can appear together. "
