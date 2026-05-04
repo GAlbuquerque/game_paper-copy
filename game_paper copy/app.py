@@ -332,9 +332,8 @@ def _finish_game_if_needed() -> None:
         inflation_history=infl_term,
         unemployment_history=unemp_term,
         real_interest_rate_history=real_term,
+        term_event_names=term_events,
     )
-    if hasattr(end_ctx, "term_event_names"):
-        end_ctx.term_event_names = term_events
 
     message = build_end_of_term_message(end_ctx)
     st.session_state.end_message = message
