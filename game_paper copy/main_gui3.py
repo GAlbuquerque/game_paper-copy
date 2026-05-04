@@ -92,7 +92,6 @@ class EconomicGameApp:
         self.initial_unemployment = self.economy.indicators.unemployment_rate
         self.current_term_start = PLAYER_START_TURN + 1 + offset
         self.term_length = 16
-        self.current_event_name = None
         self.end_game_window = None
         self.graph_window_mode = "full"
         self.graph_split_mode = False
@@ -522,12 +521,10 @@ class EconomicGameApp:
 
     def create_graph_panel(self):
         self.fig, self.ax = plt.subplots(figsize=(6, 4), dpi=80)
-        self.current_event_name = None
         self.fig.set_dpi(80)
         self.fig.set_facecolor(self.bg_color)
         self.ax.set_facecolor("white")
 
-        self.current_event_name = None
         self.canvas = FigureCanvasTkAgg(self.fig, self.graph_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
@@ -632,24 +629,7 @@ class EconomicGameApp:
         }
 
     def _draw_event_banner(self):
-        if getattr(self, "current_event_name", None):
-            self.ax.text(
-                0.5,
-                0.92,
-                self.current_event_name,
-                transform=self.ax.transAxes,
-                ha="center",
-                va="top",
-                color="red",
-                fontsize=16,
-                fontweight="bold",
-                bbox=dict(
-                    facecolor="white",
-                    alpha=0.7,
-                    edgecolor="none",
-                    boxstyle="round,pad=0.3",
-                ),
-            )
+        return
 
     def toggle_graph_window_mode(self):
         self.graph_window_mode = "past20" if self.graph_window_mode == "full" else "full"
@@ -685,8 +665,6 @@ class EconomicGameApp:
         result = self.economy.simulate_quarter()
         self._apply_turn_result(result)
         self.update_ui()
-        self.current_event_name = None
-
         if self.economy.current_quarter >= self.current_term_start + self.term_length:
             self.check_end_of_game()
 
@@ -723,13 +701,11 @@ class EconomicGameApp:
             self.latest_event_label.config(
                 text=f"{result['event_name']}\n    • {result['event']}"
             )
-            self.current_event_name = result["event_name"]
             #self.rate_entry.delete(0, tk.END)
             #disabled for tests
             return
 
         self.latest_event_label.config(text="")
-        self.current_event_name = None
 
     def check_end_of_game(self):
         self.next_button.config(state=tk.DISABLED)
@@ -744,7 +720,6 @@ class EconomicGameApp:
                 inflation_history=self.economy.variables.get_history("inflation_rate")[term_start_idx:term_end_idx],
                 unemployment_history=self.economy.variables.get_history("unemployment_rate")[term_start_idx:term_end_idx],
                 real_interest_rate_history=self.economy.variables.get_history("real_interest_rate")[term_start_idx:term_end_idx],
-                current_event_name=self.current_event_name,
             )
         )
         self.show_end_game_message(message)
@@ -812,7 +787,7 @@ class EconomicGameApp:
 
         mixed = (not success) and improved_infl and improved_unemp and (half_close_infl or half_close_unemp)
         label, reput = self._classify_public_view()
-        event_ref = self.current_event_name or "a volatile policy cycle"
+        event_ref = "a volatile policy cycle"
         if success:
             target_msg = "Full success: your mandate targets were met on average."
             lesson = "In the future, keep policy rates firmly above inflation when demand overheats."

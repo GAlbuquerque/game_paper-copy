@@ -12,6 +12,9 @@ class EndGameContext:
     unemployment_history: Sequence[float]
     real_interest_rate_history: Sequence[float]
     term_event_names: Sequence[str] = field(default_factory=tuple)
+    # Backward-compatibility field for older call sites that still pass this name.
+    # End-of-term messaging should prefer term_event_names.
+    current_event_name: Optional[str] = None
 
 
 def mandate_targets(mandate: str, dual_unemployment_target: int):
