@@ -71,11 +71,13 @@ def build_end_of_term_message(ctx: EndGameContext) -> str:
 
     fail_count = sum(1 for x in last12_infl if abs(x - t["inflation"]) > 5.0)
     if t["unemployment"] is not None:
-        fail_count += sum(1 for x in last12_unemp if x - t["unemployment"]) > 5
+        fail_count += sum(1 for x in last12_unemp if x - t["unemployment"] > 5.0)
 
     success = abs(avg_infl - t["inflation"]) <= 1
     if t["unemployment"] is not None:
-        success = success and abs(avg_unemp - t["unemployment"]) <= 1.0
+        # Unemployment is asymmetric: readings below target are good, while only
+        # readings more than 1 point above target prevent mandate success.
+        success = success and avg_unemp - t["unemployment"] <= 1.0
     if fail_count >= 3:
         success = False
 
@@ -89,10 +91,10 @@ def build_end_of_term_message(ctx: EndGameContext) -> str:
     mixed = (not success) and improved_infl and half_close_infl 
 
     if t["unemployment"] is not None:
-        un_gap0 = abs(ctx.initial_unemployment - t["unemployment"])
-        un_gap4 = abs((sum(unemp[-4:]) / max(1, len(unemp[-4:]))) - t["unemployment"])
-        improved_unemp = un_gap4 < un_gap0
-        half_close_unemp = un_gap4 <= 0.5 * un_gap0 if un_gap0 > 0 else True
+        un_gap0 = max(0.0, ctx.initial_unemployment - t["unemployment"])
+        un_gap4 = max(0.0, (sum(unemp[-4:]) / max(1, len(unemp[-4:]))) - t["unemployment"])
+        improved_unemp = un_gap4 == 0 or un_gap4 < un_gap0
+        half_close_unemp = un_gap4 == 0 or (un_gap4 <= 0.5 * un_gap0 if un_gap0 > 0 else True)
         mixed = (not success) and improved_infl and improved_unemp and (half_close_infl or half_close_unemp)
         
     label, reput = classify_public_view(infl[-20:], unemp[-20:], list(ctx.real_interest_rate_history)[-20:])
