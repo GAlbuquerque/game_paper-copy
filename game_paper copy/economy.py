@@ -224,13 +224,18 @@ class Economy:
 
     def _run_core_model(self, shocks):
         self._append_real_rate_history()
-        eff_real_rate = effective_real_interest_rate(self.real_interest_rates)
+        if self.simplified_dynamics:
+            eff_real_rate = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
+        else:
+            eff_real_rate = effective_real_interest_rate(self.real_interest_rates)
+        
+        
         rate_effect = self._compute_rate_effect(eff_real_rate)
 
         new_natural_unemployment = self._compute_natural_unemployment(shocks)
         new_unemployment = self._compute_unemployment(
             new_natural_unemployment,
-            rate_effect,
+            eff_real_rate,
             shocks,
         )
 
@@ -267,16 +272,6 @@ class Economy:
         if len(self.real_interest_rates) > self.REAL_RATE_HISTORY_LENGTH:
             self.real_interest_rates.pop(0)
 
-    def _compute_rate_effect(self, eff_real_rate):
-        if self.simplified_dynamics and len(self.real_interest_rates) >= 2:
-            real_rate_for_unemployment_effect = self.real_interest_rates[-2]
-        else:
-            real_rate_for_unemployment_effect = eff_real_rate
-
-        return max(
-            min((real_rate_for_unemployment_effect - self.indicators.real_rate_eq) * 0.3, 4),
-            -1.5,
-        )
 
     def _compute_natural_unemployment(self, shocks):
         drift_correction = (self.indicators.natural_unemployment_rate - 5) * (-0.02)
@@ -287,8 +282,12 @@ class Economy:
             + drift_correction
         )
 
-    def _compute_unemployment(self, new_natural_unemployment, rate_effect, shocks):
+    def _compute_unemployment(self, new_natural_unemployment, eff_real_rate, shocks):
             
+        rate_effect = max(
+            min((eff_real_rate - self.indicators.real_rate_eq) * 0.3, 4),
+            -1.5,
+        )
         
         new_unemployment = (
             self.beta1["unemployment"] * new_natural_unemployment
@@ -307,8 +306,6 @@ class Economy:
         return new_unemployment
 
     def _compute_inflation(self, eff_real_rate, gap_effect, shocks, reputation):
-        if self.simplified_dynamics:
-            eff_real_rate = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
             
         rate_effect_inflation = min(
             max((eff_real_rate - self.indicators.real_rate_eq) * (-0.1), -2),
