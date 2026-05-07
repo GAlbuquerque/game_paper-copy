@@ -225,10 +225,7 @@ class Economy:
     def _run_core_model(self, shocks):
         self._append_real_rate_history()
         eff_real_rate = effective_real_interest_rate(self.real_interest_rates)
-        rate_effect = max(
-            min((eff_real_rate - self.indicators.real_rate_eq) * 0.3, 4),
-            -1.5,
-        )
+        rate_effect = self._compute_rate_effect(eff_real_rate)
 
         new_natural_unemployment = self._compute_natural_unemployment(shocks)
         new_unemployment = self._compute_unemployment(
@@ -269,6 +266,17 @@ class Economy:
         self.real_interest_rates.append(new_real_rate)
         if len(self.real_interest_rates) > self.REAL_RATE_HISTORY_LENGTH:
             self.real_interest_rates.pop(0)
+
+    def _compute_rate_effect(self, eff_real_rate):
+        if self.simplified_dynamics and len(self.real_interest_rates) >= 2:
+            real_rate_for_unemployment_effect = self.real_interest_rates[-2]
+        else:
+            real_rate_for_unemployment_effect = eff_real_rate
+
+        return max(
+            min((real_rate_for_unemployment_effect - self.indicators.real_rate_eq) * 0.3, 4),
+            -1.5,
+        )
 
     def _compute_natural_unemployment(self, shocks):
         drift_correction = (self.indicators.natural_unemployment_rate - 5) * (-0.02)
