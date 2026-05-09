@@ -167,13 +167,12 @@ class Economy:
         event_description, event_name, names = self._select_and_queue_event(history)
         self._record_past_events(names)
         self._apply_current_event_slice()
-        rate_effect, gap_effect = self._run_core_model(shocks)
+        gap_effect = self._run_core_model(shocks)
         self.current_quarter += 1
 
         result = {
             "event": event_description,
             "event_name": event_name,
-            "rate_effect": rate_effect,
             "gap_effect": gap_effect,
             "shocks": shocks.tolist(),
         }
@@ -225,12 +224,11 @@ class Economy:
     def _run_core_model(self, shocks):
         self._append_real_rate_history()
         if self.simplified_dynamics:
-            eff_real_rate = self.real_interest_rates[-1] if self.real_interest_rates else 0.0
+            eff_real_rate = (
+                self.real_interest_rates[-1] if self.real_interest_rates else 0.0
+            )
         else:
             eff_real_rate = effective_real_interest_rate(self.real_interest_rates)
-        
-        
-        rate_effect = self._compute_rate_effect(eff_real_rate)
 
         new_natural_unemployment = self._compute_natural_unemployment(shocks)
         new_unemployment = self._compute_unemployment(
@@ -261,7 +259,7 @@ class Economy:
             prev_inflation,
         )
         self._record_post_update_histories()
-        return rate_effect, gap_effect
+        return gap_effect
 
     def _append_real_rate_history(self):
         new_real_rate = compute_real_interest_rate(
