@@ -22,7 +22,7 @@ from economy import Economy
 from endgame_logic import EndGameContext, build_end_of_term_message, mandate_text, mandate_targets
 
 
-offset = 10  # hidden turns
+offset = 0  # hidden turns
 PLAYER_START_TURN = 40
 APP_TITLE = "Policy Interest Rate Simulator"
 SCENARIOS = {

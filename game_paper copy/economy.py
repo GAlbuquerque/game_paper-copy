@@ -74,7 +74,7 @@ class Economy:
     def _initialize_model_parameters(self):
         self.beta1 = {
             "inflation": 1,
-            "unemployment": 0.85,
+            "unemployment": 0.2,
             "natural_unemployment": 1,
             "real_rate_eq": 1,
         }
@@ -87,7 +87,7 @@ class Economy:
                 [0.0, 0.0, 0.0, 1.0],
             ]
         )
-        self.std_devs = np.array([0.3, 0.5, 0.05, 0.1])
+        self.std_devs = np.array([0.3, 0.2, 0.05, 0.1])
 
     def _seed_real_rate_history(self):
         self.real_interest_rates = [0.5]
@@ -283,8 +283,8 @@ class Economy:
     def _compute_unemployment(self, new_natural_unemployment, eff_real_rate, shocks):
             
         rate_effect = max(
-            min((eff_real_rate - self.indicators.real_rate_eq) * 0.3, 4),
-            -1.5,
+            min((eff_real_rate - self.indicators.real_rate_eq) * 0.3, 2),
+            -0.5,
         )
         
         new_unemployment = (
@@ -294,9 +294,9 @@ class Economy:
             + shocks[1]
         )
         
-        if new_unemployment < self.indicators.unemployment_rate:
-            decrease = self.indicators.unemployment_rate - new_unemployment
-            new_unemployment = self.indicators.unemployment_rate - (0.5 * decrease)
+       # if new_unemployment < self.indicators.unemployment_rate:
+        #    decrease = self.indicators.unemployment_rate - new_unemployment
+         #   new_unemployment = self.indicators.unemployment_rate - (0.5 * decrease)
             
         
         new_unemployment = max( min (new_unemployment, 99), 1)
@@ -334,6 +334,13 @@ class Economy:
 
         if new_inflation < 0 and self.indicators.inflation_rate > 10:
             new_inflation = self.indicators.inflation_rate / 2
+            #This is to prevent huge swings when inflation is high
+            
+        if new_inflation < 0 and self.indicators.inflation_rate < 1:
+            new_inflation = new_inflation / 4
+            #This is to model sticky prices below
+            
+            
 
         return new_inflation
 
